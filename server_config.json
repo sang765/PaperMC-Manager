@@ -1,4 +1,6 @@
 {
     "ram": "4G",
-    "nogui": true
+    "nogui": true,
+    "online_mode": true,
+    "port": 25565
 }
