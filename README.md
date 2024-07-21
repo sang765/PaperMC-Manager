@@ -1,4 +1,11 @@
-# PaperMC Manager by sang765
+<div align="center">
+  <img src="https://i.imgur.com/v27gUcx.png" alt="PaperMC Manager" width="100">
+  <h1>PaperMC Manager</h1>
+  <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Python/python1.svg" alt="BetterDiscord" width="100">
+  <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Windows/windows1.svg" alt="BetterDiscord" width="120">
+  <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/macOS/macos1.svg" alt="BetterDiscord" width="108">
+  <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Linux/linux2.svg" alt="BetterDiscord" width="93">
+</div>
 
 ## Description
 
@@ -25,6 +32,20 @@ This script helps manage Minecraft servers using PaperMC. It provides features s
 
 5. **Configure Server**
    - Configure server settings, including RAM limit and GUI mode.
+
+## Screenshot:
+Main menu:
+![image](https://i.imgur.com/HOPBWQz.png)
+Start server:
+![image](https://i.imgur.com/MMrtYbr.png)
+Check for updates:
+![image](https://i.imgur.com/lwGk71L.png)
+Change version:
+![image](https://i.imgur.com/b7ynEm3.png)
+Configure server:
+![image](https://i.imgur.com/xblw95w.png)
+VSCode Preview:
+![image](https://github.com/user-attachments/assets/5ce71df7-1c2b-432c-8bd4-bcc0f18c893e)
 
 ## Installation
 
