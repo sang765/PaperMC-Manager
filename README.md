@@ -88,3 +88,6 @@ VSCode Preview:
 2. **Run the EXE Version:**
 
    - Run the EXE file by double-clicking it or executing it from the command line.
+
+## Note 
+- This script is not affliated with PaperMC team.
