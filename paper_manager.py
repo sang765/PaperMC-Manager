@@ -26,7 +26,8 @@ config_file = "server_config.json"
 
 default_config = {
     "ram": "4G",
-    "nogui": True
+    "nogui": True,
+    "auto_update": False
 }
 
 def load_config():
@@ -71,7 +72,7 @@ def notify(title, message):
             print(f"Notification: {title} - {message}")
 
     # Run notification in a separate thread
-    notification_thread = Thread(target=show_notification)
+    notification_thread = threading.Thread(target=show_notification)
     notification_thread.start()
 
 def get_versions():
@@ -96,7 +97,7 @@ def get_builds_for_version(version):
         builds_data = response.json()
         builds = builds_data['builds']
         if builds:
-            print(Fore.GREEN + f"Available builds for version {version}: {[build['build'] for build in builds]}")
+            print(Fore.GREEN + f"Available builds for version {Fore.YELLOW}{version}{Fore.GREEN}: {Fore.CYAN}{[build['build'] for build in builds]}")
             return builds
         else:
             print(Fore.RED + "No builds found for this version.")
@@ -114,7 +115,7 @@ def get_latest_version_url(version):
     build_number = latest_build['build']
     file_name = f"paper-{version}-{build_number}.jar"
     download_url = download_url_template.format(version=version, build_number=build_number, file_name=file_name)
-    print(Fore.GREEN + f"URL fetched successfully: {download_url}")
+    print(Fore.GREEN + f"URL fetched successfully: {Fore.YELLOW}{download_url}")
     return download_url, file_name
 
 def get_current_version():
@@ -146,6 +147,10 @@ def run_server(file_name):
 def start_server_no_loop():
     clear_terminal()
     current_version = get_current_version()
+    
+    if config.get("auto_update", False):
+        check_for_update()
+    
     if current_version:
         print(Fore.GREEN + f"Starting server with version: " + Fore.YELLOW + f"{current_version}")
         notify("Server Starting", f"Server starting with version: {current_version}")
@@ -181,7 +186,6 @@ def read_input_windows(prompt, timeout):
 
 def read_input_unix(prompt, timeout):
     import select
-    import sys
     print(prompt, end='', flush=True)
     fd = sys.stdin.fileno()
     start_time = time.time()
@@ -200,47 +204,55 @@ def start_server_loop():
     clear_terminal()
     while True:
         current_version = get_current_version()
+        
+        if config.get("auto_update", False):
+            check_for_update()
+        
         if current_version:
             print(Fore.GREEN + f"Starting server with version: " + Fore.YELLOW + f"{current_version}")
             notify("Server Starting", f"Server starting with version: {current_version}")
             server_process = run_server(current_version)
             server_process.wait()
-            print(Fore.RED + "Server has stopped. Restarting in 5 seconds...")
-            print(Fore.YELLOW + "If you don't want to restart the server, press close the window or kill the terminal to stop the server without damaging data.")
-            print(Fore.GREEN + "If you want to restart the server, please " + Fore.RED + "don't touch " + Fore.GREEN + "anything.")
+            print(Fore.RED + "Server has stopped. Restarting in 5 seconds or CTRL+C to stop.")
+            restart_server = read_input_with_timeout("Press enter to stop restarting server...", 5)
+            if restart_server == "":
+                print(Fore.RED + "Stopping the server restart loop.")
+                break
+            clear_terminal()
+        else:
             print(Fore.YELLOW + "No PaperMC file found. Please configure a PaperMC version.")
-            time.sleep(5)
+            break
+
+def handle_interrupt(signal, frame):
+    print(Fore.RED + "Detected interruption signal. Exiting gracefully...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_interrupt)
 
 def check_for_update():
-    clear_terminal()
-    versions = get_versions()
-    if not versions:
-        return
-
-    minecraft_version = versions[-1]
-    latest_version_url, latest_version_file = get_latest_version_url(minecraft_version)
-    if not latest_version_url:
-        return
-    
+    print(Fore.CYAN + "Checking for updates...")
     current_version = get_current_version()
-
-    if current_version == latest_version_file:
-        print(Fore.GREEN + "You already have the latest version.")
-        return
-    
-    print(Fore.CYAN + f"New version available: {latest_version_file}. Do you want to update? (yes/no)")
-    user_input = input().strip().lower()
-    
-    if user_input in ['yes', 'y']:
-        if current_version:
-            print(Fore.YELLOW + f"Deleting old version: {current_version}")
-            delete_old_version(current_version)
+    if current_version:
+        current_version_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', current_version)
+        current_version_number = current_version_match.group(1)
+        current_build_number = int(current_version_match.group(2))
+        download_url, file_name = get_latest_version_url(current_version_number)
         
-        print(Fore.BLUE + f"Downloading latest version: {latest_version_file}")
-        download_latest_version(latest_version_url, latest_version_file)
-        print(Fore.GREEN + "Update completed.")
+        if download_url:
+            latest_build_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file_name)
+            latest_build_number = int(latest_build_match.group(2))
+            
+            if latest_build_number > current_build_number:
+                print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
+                delete_old_version(current_version)
+                download_latest_version(download_url, file_name)
+            else:
+                print(Fore.GREEN + "You are already using the latest version.")
+        else:
+            print(Fore.RED + "Failed to fetch the latest version URL.")
     else:
-        print(Fore.YELLOW + "Update skipped. Returning to menu.")
+        print(Fore.YELLOW + "No current version found, nothing to update.")
+
 
 def change_paper_version():
     clear_terminal()
@@ -325,6 +337,7 @@ def configure_server():
         print(f"18. Online Mode: {Fore.GREEN + 'Enabled' if config.get('online_mode', True) else Fore.RED + 'Disabled'}")
         print(f"19. GC Options: {config.get('gc_options', '-XX:+UseG1GC')}")
         print(f"20. VM Options: {config.get('vm_options', '')}")
+        print(f"21. Auto Update PaperMC: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
@@ -347,7 +360,8 @@ def configure_server():
         print("18. Toggle Online Mode")
         print("19. Set GC Options")
         print("20. Set VM Options")
-        print("21. Save and Return to Menu")
+        print("21. Toggle Auto Update PaperMC")
+        print("22. Save and Return to Menu")
 
         choice = input("Select an option: ").strip()
 
@@ -437,6 +451,10 @@ def configure_server():
             config["vm_options"] = vm_options
         elif choice == '21':
             clear_terminal()
+            config["auto_update"] = not config.get("auto_update", False)
+            print(f"Auto Update is now {'Enabled' if config['auto_update'] else 'Disabled'}.")
+        elif choice == '22':
+            clear_terminal()
             save_config(config)
             print(Fore.YELLOW + "Configuration saved. Returning to menu...")
             time.sleep(3)
@@ -473,7 +491,7 @@ def menu():
         print(Fore.LIGHTRED_EX + "3. Change PaperMC Version")
         print(Fore.CYAN + "4. Configure Server Settings")
         print(Fore.RED + "5. Quit")
-
+        
         choice = input("Select an option: ").strip()
 
         if choice == '1':
@@ -488,7 +506,7 @@ def menu():
                 print(Fore.YELLOW + "1. Start (Without Restart)")
                 print(Fore.GREEN + "2. Start (Auto Restart)")
                 print(Fore.CYAN + "3. Go Back")
-
+                
                 sub_choice = input("Select an option: ").strip()
 
                 if sub_choice == '1':
@@ -501,7 +519,6 @@ def menu():
                     break
                 else:
                     print(Fore.RED + "Invalid option. Please select a valid option.")
-
         elif choice == '2':
             clear_terminal()
             check_for_update()
@@ -524,6 +541,7 @@ def menu():
             exit()
         else:
             print(Fore.RED + "Invalid option. Please select a valid option.")
+
 
 if __name__ == "__main__":
     menu()
