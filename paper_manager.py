@@ -64,14 +64,13 @@ def notify(title, message):
         if platform.system() == 'Windows':
             toaster = ToastNotifier()
             toaster.show_toast(title, message)
-        elif platform.system() == 'Darwin':  # macOS
+        elif platform.system() == 'Darwin':
             os.system(f"osascript -e 'display notification \"{message}\" with title \"{title}\"'")
         elif platform.system() == 'Linux':
             os.system(f"notify-send '{title}' '{message}'")
         else:
             print(f"Notification: {title} - {message}")
 
-    # Run notification in a separate thread
     notification_thread = threading.Thread(target=show_notification)
     notification_thread.start()
 
@@ -242,20 +241,13 @@ def check_for_update():
                 print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
                 delete_old_version(current_version)
                 download_latest_version(download_url, file_name)
-                # Call get_changelog after downloading the new build
                 get_changelog(current_version_number, latest_build_number)
             else:
                 print(Fore.GREEN + "You are already using the latest version.")
-                print(Fore.YELLOW + "Back to menu in 3 seconds...")
-                time.sleep(3)
         else:
             print(Fore.RED + "Failed to fetch the latest version URL.")
-            print(Fore.YELLOW + "Back to menu in 3 seconds...")
-            time.sleep(3)
     else:
         print(Fore.YELLOW + "No current version found, nothing to update.")
-        print(Fore.YELLOW + "Back to menu in 3 seconds...")
-        time.sleep(3)
 
 def get_changelog_for_build(version, build_number):
     """
@@ -264,7 +256,7 @@ def get_changelog_for_build(version, build_number):
     changelog_url = f"https://Paper.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
     try:
         response = requests.get(changelog_url)
-        response.raise_for_status()  # Đảm bảo rằng yêu cầu thành công
+        response.raise_for_status()
         changelog = response.text
         return changelog
     except requests.RequestException as e:
@@ -319,7 +311,6 @@ def change_paper_version():
         file_name = f"paper-{selected_version}-{build_number}.jar"
         download_url = download_url_template.format(version=selected_version, build_number=build_number, file_name=file_name)
         
-        # Lấy changelog cho build được chọn
         changelog = get_changelog_for_build(selected_version, build_number)
         
         clear_terminal()
