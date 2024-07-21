@@ -213,12 +213,8 @@ def start_server_loop():
             notify("Server Starting", f"Server starting with version: {current_version}")
             server_process = run_server(current_version)
             server_process.wait()
-            print(Fore.RED + "Server has stopped. Restarting in 5 seconds or CTRL+C to stop.")
-            restart_server = read_input_with_timeout("Press enter to stop restarting server...", 5)
-            if restart_server == "":
-                print(Fore.RED + "Stopping the server restart loop.")
-                break
-            clear_terminal()
+            print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")
+            time.sleep(5)
         else:
             print(Fore.YELLOW + "No PaperMC file found. Please configure a PaperMC version.")
             break
@@ -246,13 +242,34 @@ def check_for_update():
                 print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
                 delete_old_version(current_version)
                 download_latest_version(download_url, file_name)
+                # Call get_changelog after downloading the new build
+                get_changelog(current_version_number, latest_build_number)
             else:
                 print(Fore.GREEN + "You are already using the latest version.")
+                print(Fore.YELLOW + "Back to menu in 3 seconds...")
+                time.sleep(3)
         else:
             print(Fore.RED + "Failed to fetch the latest version URL.")
+            print(Fore.YELLOW + "Back to menu in 3 seconds...")
+            time.sleep(3)
     else:
         print(Fore.YELLOW + "No current version found, nothing to update.")
+        print(Fore.YELLOW + "Back to menu in 3 seconds...")
+        time.sleep(3)
 
+def get_changelog_for_build(version, build_number):
+    """
+    Get changelog for the specified version and build number.
+    """
+    changelog_url = f"https://papermc.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
+    try:
+        response = requests.get(changelog_url)
+        response.raise_for_status()  # Đảm bảo rằng yêu cầu thành công
+        changelog = response.text
+        return changelog
+    except requests.RequestException as e:
+        print(Fore.RED + f"Error fetching changelog: {e}")
+        return None
 
 def change_paper_version():
     clear_terminal()
@@ -260,6 +277,12 @@ def change_paper_version():
     if not versions:
         return
     
+    clear_terminal()
+    print(Fore.MAGENTA + text_art)
+    print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+    print("")
+    print("")
+    print("")
     print(Fore.CYAN + "Available Minecraft versions:")
     for idx, version in enumerate(versions, 1):
         print(Fore.YELLOW + f"{idx}." + Fore.GREEN + f" {version}")
@@ -270,11 +293,18 @@ def change_paper_version():
             print(Fore.RED + "Invalid choice.")
             return
         
+        clear_terminal()
         selected_version = versions[choice - 1]
         builds = get_builds_for_version(selected_version)
         if not builds:
             return
 
+        clear_terminal()
+        print(Fore.MAGENTA + text_art)
+        print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+        print("")
+        print("")
+        print("")
         print(Fore.CYAN + "Available builds:")
         for idx, build in enumerate(builds, 1):
             print(Fore.YELLOW + f"{idx}." + Fore.GREEN + f" Build {build['build']}")
@@ -289,6 +319,24 @@ def change_paper_version():
         file_name = f"paper-{selected_version}-{build_number}.jar"
         download_url = download_url_template.format(version=selected_version, build_number=build_number, file_name=file_name)
         
+        # Lấy changelog cho build được chọn
+        changelog = get_changelog_for_build(selected_version, build_number)
+        
+        clear_terminal()
+        print(Fore.MAGENTA + text_art)
+        print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+        print("")
+        print("")
+        print("")
+        
+        if changelog:
+            print(Fore.CYAN + "Changelog for build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + ":")
+            print(Fore.WHITE + changelog)
+        else:
+            print(Fore.RED + "No changelog available for this build.")
+        
+        print("")
+        print("")
         print(Fore.CYAN + f"Do you want to download build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + f" for Minecraft version" + Fore.GREEN + f" {selected_version}" + Fore.CYAN + f"? (yes/no)")
         user_input = input().strip().lower()
         
@@ -303,9 +351,94 @@ def change_paper_version():
             print(Fore.GREEN + f"Version updated to:" + Fore.YELLOW + f" {file_name}")
             clear_terminal()
         else:
+            clear_terminal()
             print(Fore.YELLOW + "Update skipped. Returning to menu.")
     except ValueError:
         print(Fore.RED + "Invalid input. Please enter a number.")
+
+def get_changelog_menu():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print(Fore.CYAN + "Get Changelog")
+    version = input(Fore.WHITE + "Enter PaperMC version (e.g., 1.21): ")
+    build = input(Fore.WHITE + "Enter PaperMC build number: ")
+    get_changelog(version, build)
+    input(Fore.WHITE + "Press Enter to return to the main menu.")
+
+def get_changelog(version, build):
+    changelog_url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build}/changelog"
+    try:
+        response = requests.get(changelog_url)
+        response.raise_for_status()
+        changelog_data = response.json()
+        if changelog_data and 'changelog' in changelog_data:
+            print(Fore.GREEN + "Changelog for build " + str(build) + ":")
+            print(Fore.WHITE + changelog_data['changelog'])
+        else:
+            print(Fore.RED + "Changelog not found for the specified version and build.")
+    except requests.HTTPError as http_err:
+        print(Fore.RED + f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        print(Fore.RED + f"Other error occurred: {err}")
+
+def list_versions():
+    url = "https://api.papermc.io/v2/projects/paper"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        versions = data.get('versions', [])
+        print(Fore.GREEN + "Available PaperMC versions:")
+        for version in versions:
+            print(Fore.WHITE + version)
+    except requests.HTTPError as http_err:
+        print(Fore.RED + f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        print(Fore.RED + f"Other error occurred: {err}")
+
+def list_builds(version):
+    url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        builds = data.get('builds', [])
+        print(Fore.GREEN + f"Available builds for version {version}:")
+        for build in builds:
+            print(Fore.WHITE + str(build))
+    except requests.HTTPError as http_err:
+        print(Fore.RED + f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        print(Fore.RED + f"Other error occurred: {err}")
+
+def reload_script():
+    clear_terminal()
+    print(Fore.MAGENTA + text_art)
+    print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+    print("")
+    print(Fore.CYAN + "Reloading script from GitHub...")
+
+    script_url = "https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py"
+    try:
+        response = requests.get(script_url)
+        response.raise_for_status()  # Check for HTTP errors
+
+        # Write the content to the current script file
+        script_path = __file__  # Path to the current script
+        with open(script_path, "w") as f:
+            f.write(response.text)
+        
+        print(Fore.GREEN + "Script reloaded successfully.")
+        
+        # Optional: Restart the script after reloading
+        print(Fore.CYAN + "Restarting the script...")
+        os.execv(sys.executable, ['python'] + [script_path])
+    
+    except requests.RequestException as e:
+        print(Fore.RED + f"Error reloading script: {e}")
+    except IOError as e:
+        print(Fore.RED + f"File error: {e}")
+
+    input(Fore.CYAN + "Press Enter to return to menu.")
 
 def configure_server():
     clear_terminal()
@@ -490,7 +623,9 @@ def menu():
         print(Fore.LIGHTGREEN_EX + "2. Check for Update Your PaperMC Build")
         print(Fore.LIGHTRED_EX + "3. Change PaperMC Version")
         print(Fore.CYAN + "4. Configure Server Settings")
-        print(Fore.RED + "5. Quit")
+        print(Fore.MAGENTA + "5. Show Changelog for Latest Build")
+        print(Fore.LIGHTCYAN_EX + "6. Reload Script (Sync from GitHub raw)")
+        print(Fore.RED + "7. Quit (Please close window to exit if you use EXE version)")
         
         choice = input("Select an option: ").strip()
 
@@ -529,18 +664,18 @@ def menu():
             clear_terminal()
             configure_server()
         elif choice == '5':
+            clear_terminal()
+            list_versions()
+        elif choice == '6':
+            clear_terminal()
+            reload_script()
+        elif choice == '7':
             on_exit()  # Call on_exit to handle active processes before quitting
             clear_terminal()
-            print(Fore.MAGENTA + text_art)
-            print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
-            print("")
-            print("")
-            print("")
-            print(Fore.RED + "Thank you for using this script. Hope you enjoy and have a nice day. Bye!")
-            time.sleep(5)
-            exit()
+            print(Fore.MAGENTA + "Thank you for using this script. Goodbye!")
+            sys.exit()
         else:
-            print(Fore.RED + "Invalid option. Please select a valid option.")
+            print(Fore.RED + "Invalid option. Please try again.")
 
 
 if __name__ == "__main__":
