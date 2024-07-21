@@ -160,7 +160,7 @@ def start_server_no_loop():
         print(Fore.YELLOW + "Back to menu...")
         menu()
     else:
-        print(Fore.YELLOW + "No PaperMC file found. Please configure a PaperMC version.")
+        print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
 
 def read_input_with_timeout(prompt, timeout):
     if platform.system() == 'Windows':
@@ -216,7 +216,7 @@ def start_server_loop():
             print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")
             time.sleep(5)
         else:
-            print(Fore.YELLOW + "No PaperMC file found. Please configure a PaperMC version.")
+            print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
             break
 
 def handle_interrupt(signal, frame):
@@ -261,7 +261,7 @@ def get_changelog_for_build(version, build_number):
     """
     Get changelog for the specified version and build number.
     """
-    changelog_url = f"https://papermc.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
+    changelog_url = f"https://Paper.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
     try:
         response = requests.get(changelog_url)
         response.raise_for_status()  # Đảm bảo rằng yêu cầu thành công
@@ -359,13 +359,13 @@ def change_paper_version():
 def get_changelog_menu():
     os.system('cls' if os.name == 'nt' else 'clear')
     print(Fore.CYAN + "Get Changelog")
-    version = input(Fore.WHITE + "Enter PaperMC version (e.g., 1.21): ")
-    build = input(Fore.WHITE + "Enter PaperMC build number: ")
+    version = input(Fore.WHITE + "Enter Paper version (e.g., 1.21): ")
+    build = input(Fore.WHITE + "Enter Paper build number: ")
     get_changelog(version, build)
     input(Fore.WHITE + "Press Enter to return to the main menu.")
 
 def get_changelog(version, build):
-    changelog_url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build}/changelog"
+    changelog_url = f"https://api.Paper.io/v2/projects/paper/versions/{version}/builds/{build}/changelog"
     try:
         response = requests.get(changelog_url)
         response.raise_for_status()
@@ -381,13 +381,13 @@ def get_changelog(version, build):
         print(Fore.RED + f"Other error occurred: {err}")
 
 def list_versions():
-    url = "https://api.papermc.io/v2/projects/paper"
+    url = "https://api.Paper.io/v2/projects/paper"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
         versions = data.get('versions', [])
-        print(Fore.GREEN + "Available PaperMC versions:")
+        print(Fore.GREEN + "Available Paper versions:")
         for version in versions:
             print(Fore.WHITE + version)
     except requests.HTTPError as http_err:
@@ -396,7 +396,7 @@ def list_versions():
         print(Fore.RED + f"Other error occurred: {err}")
 
 def list_builds(version):
-    url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds"
+    url = f"https://api.Paper.io/v2/projects/paper/versions/{version}/builds"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -417,7 +417,7 @@ def reload_script():
     print("")
     print(Fore.CYAN + "Reloading script from GitHub...")
 
-    script_url = "https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py"
+    script_url = "https://raw.githubusercontent.com/sang765/Paper-Manager/main/paper_manager.py"
     try:
         response = requests.get(script_url)
         response.raise_for_status()  # Check for HTTP errors
@@ -470,7 +470,7 @@ def configure_server():
         print(f"18. Online Mode: {Fore.GREEN + 'Enabled' if config.get('online_mode', True) else Fore.RED + 'Disabled'}")
         print(f"19. GC Options: {config.get('gc_options', '-XX:+UseG1GC')}")
         print(f"20. VM Options: {config.get('vm_options', '')}")
-        print(f"21. Auto Update PaperMC: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
+        print(f"21. Auto Update Paper: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
@@ -493,7 +493,7 @@ def configure_server():
         print("18. Toggle Online Mode")
         print("19. Set GC Options")
         print("20. Set VM Options")
-        print("21. Toggle Auto Update PaperMC")
+        print("21. Toggle Auto Update Paper")
         print("22. Save and Return to Menu")
 
         choice = input("Select an option: ").strip()
@@ -620,8 +620,8 @@ def menu():
         print("")
         print(Fore.CYAN + "Options:")
         print(Fore.YELLOW + "1. Start Minecraft Server")
-        print(Fore.LIGHTGREEN_EX + "2. Check for Update Your PaperMC Build")
-        print(Fore.LIGHTRED_EX + "3. Change PaperMC Version")
+        print(Fore.LIGHTGREEN_EX + "2. Check for Update Your Paper Build")
+        print(Fore.LIGHTRED_EX + "3. Change Paper Version")
         print(Fore.CYAN + "4. Configure Server Settings")
         print(Fore.MAGENTA + "5. Show Changelog for Latest Build")
         print(Fore.LIGHTCYAN_EX + "6. Reload Script (Sync from GitHub raw)")
