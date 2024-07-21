@@ -47,6 +47,15 @@ Configure server:
 VSCode Preview:
 ![image](https://github.com/user-attachments/assets/5ce71df7-1c2b-432c-8bd4-bcc0f18c893e)
 
+## Note Before Using
+> [!NOTE]
+>
+> Please place **python** file or **exe** file to __root paper server folder__.
+>
+> **IMPORTANT**
+> Please don't change the name for paper file (That 100% make the script broken.)
+
+
 ## Installation
 
 ### Python Installation
