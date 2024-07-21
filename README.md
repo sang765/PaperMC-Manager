@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="https://i.imgur.com/v27gUcx.png" alt="PaperMC Manager" width="100">
-  <h1>PaperMC Manager</h1>
+  <img src="https://i.imgur.com/v27gUcx.png" alt="Paper Manager" width="100">
+  <h1>Paper Manager</h1>
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Python/python1.svg" alt="BetterDiscord" width="100">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Windows/windows1.svg" alt="BetterDiscord" width="120">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/macOS/macos1.svg" alt="BetterDiscord" width="108">
@@ -9,7 +9,7 @@
 
 ## Description
 
-This script helps manage Minecraft servers using PaperMC. It provides features such as:
+This script helps manage Minecraft servers using **[Paper](https://github.com/PaperMC/Paper)**. It provides features such as:
 - Starting the Minecraft server without auto-restart
 - Starting the Minecraft server with auto-restart
 - Checking and updating to the latest PaperMC build
@@ -25,10 +25,10 @@ This script helps manage Minecraft servers using PaperMC. It provides features s
    - Start the Minecraft server and automatically restart it after the server stops.
 
 3. **Check for Updates**
-   - Check and download the latest PaperMC build if available.
+   - Check and download the latest Paper build if available.
 
 4. **Change PaperMC Version**
-   - Select and download a specific PaperMC version from available builds.
+   - Select and download a specific Paper version from available builds.
 
 5. **Configure Server**
    - Configure server settings, including RAM limit and GUI mode.
