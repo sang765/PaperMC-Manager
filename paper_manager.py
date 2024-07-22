@@ -134,11 +134,13 @@ def start_server_no_loop():
         check_for_update_auto_mode()
     
     if current_version:
+        print(Fore.GREEN + f"=================== STARTING SERVER ==================")
         print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
         server_process = run_server(current_version)
         server_process.wait()
-        print(Fore.RED + "Server has stopped.")
+        print(Fore.RED + f"====================== SERVER STOPED =====================")
         print(Fore.YELLOW + "Back to menu...")
+        time.sleep(1)
         menu()
     else:
         print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
@@ -190,10 +192,15 @@ def start_server_loop():
             check_for_update_auto_mode()
         
         if current_version:
+            print(Fore.GREEN + f"=================== STARTING SERVER ==================")
             print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
             server_process = run_server(current_version)
             server_process.wait()
+            print(Fore.RED + f"====================== SERVER STOPED =====================")
             print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")
+            print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
+            print(Fore.RED + f"==========================================================")
+            print()
             time.sleep(5)
         else:
             print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
@@ -222,7 +229,7 @@ def check_for_update_auto_mode():
                 print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
                 delete_old_version(current_version)
                 download_latest_version(download_url, file_name)
-                get_changelog(current_version_number, latest_build_number)
+                get_changelog_for_build(current_version_number, latest_build_number)
             else:
                 print(Fore.GREEN + "You are already using the latest version.")
         else:
@@ -262,20 +269,6 @@ def check_for_update():
     else:
         print(Fore.YELLOW + "Update skipped. Returning to menu.")
 
-def get_changelog_for_build(version, build_number):
-    """
-    Get changelog for the specified version and build number.
-    """
-    changelog_url = f"https://papermc.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
-    try:
-        response = requests.get(changelog_url)
-        response.raise_for_status()
-        changelog = response.text
-        return changelog
-    except requests.RequestException as e:
-        print(Fore.RED + f"Error fetching changelog: {e}")
-        return None
-
 def change_paper_version():
     clear_terminal()
     versions = get_versions()
@@ -290,10 +283,10 @@ def change_paper_version():
     print("")
     print(Fore.CYAN + "Available Minecraft versions:")
     for idx, version in enumerate(versions, 1):
-        print(Fore.YELLOW + f"{idx}." + Fore.GREEN + f" {version}")
+        print(Fore.YELLOW + f"{idx}." + Fore.GREEN + f" Minecraft" + Fore.CYAN + f" {version}")
 
     try:
-        choice = int(input("Select a Minecraft version (number): "))
+        choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Minecraft version: " + Fore.YELLOW))
         if choice < 1 or choice > len(versions):
             print(Fore.RED + "Invalid choice.")
             return
@@ -302,6 +295,7 @@ def change_paper_version():
         selected_version = versions[choice - 1]
         builds = get_builds_for_version(selected_version)
         if not builds:
+            print(Fore.RED + "No builds available for the selected version.")
             return
 
         clear_terminal()
@@ -311,31 +305,42 @@ def change_paper_version():
         print("")
         print("")
         print(Fore.CYAN + "Available builds:")
-        for idx, build in enumerate(builds, 1):
-            print(Fore.YELLOW + f"{idx}." + Fore.GREEN + f" Build {build['build']}")
+        print("Please wait a moment for the changelog to be fetched...")
+        print("")
         
-        choice = int(input("Select a build (number): "))
-        if choice < 1 or choice > len(builds):
+        build_summaries = []
+        for build in builds:
+            build_number = build['build']
+            summary = get_changelog_for_build(selected_version, build_number)
+            build_summaries.append((build, summary))
+            
+        for idx, (build, summary) in enumerate(build_summaries, 1):
+            build_number = build['build']
+            print(Fore.YELLOW + f"{idx}. " + Fore.GREEN + f"Paper Build " + Fore.CYAN + f"{build_number}")
+            if summary:
+                print(Fore.YELLOW + f"  - Changelog: " + Fore.WHITE + f"{summary}")
+            else:
+                print(Fore.YELLOW + "  - Changelog:" + Fore.RED + " No changelog available")
+
+        choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Paper build version: " + Fore.YELLOW))
+        if choice < 1 or choice > len(build_summaries):
             print(Fore.RED + "Invalid choice.")
             return
         
-        selected_build = builds[choice - 1]
+        selected_build, summary = build_summaries[choice - 1]
         build_number = selected_build['build']
         file_name = f"paper-{selected_version}-{build_number}.jar"
         download_url = download_url_template.format(version=selected_version, build_number=build_number, file_name=file_name)
-        
-        changelog = get_changelog_for_build(selected_version, build_number)
         
         clear_terminal()
         print(Fore.MAGENTA + text_art)
         print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
         print("")
         print("")
-        print("")
         
-        if changelog:
+        if summary:
             print(Fore.CYAN + "Changelog for build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + ":")
-            print(Fore.WHITE + changelog)
+            print(Fore.WHITE + summary)
         else:
             print(Fore.RED + "No changelog available for this build.")
         
@@ -360,59 +365,22 @@ def change_paper_version():
     except ValueError:
         print(Fore.RED + "Invalid input. Please enter a number.")
 
-def get_changelog_menu():
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print(Fore.CYAN + "Get Changelog")
-    version = input(Fore.WHITE + "Enter Paper version (e.g., 1.21): ")
-    build = input(Fore.WHITE + "Enter Paper build number: ")
-    get_changelog(version, build)
-    input(Fore.WHITE + "Press Enter to return to the main menu.")
-
-def get_changelog(version, build):
-    changelog_url = f"https://api.paper.io/v2/projects/paper/versions/{version}/builds/{build}/changelog"
+def get_changelog_for_build(version, build_number):
+    """
+    Get changelog for the specified version and build number.
+    """
+    changelog_url = f"https://papermc.io/api/v2/projects/paper/versions/{version}/builds/{build_number}"
     try:
         response = requests.get(changelog_url)
-        response.raise_for_status()
-        changelog_data = response.json()
-        if changelog_data and 'changelog' in changelog_data:
-            print(Fore.GREEN + "Changelog for build " + str(build) + ":")
-            print(Fore.WHITE + changelog_data['changelog'])
-        else:
-            print(Fore.RED + "Changelog not found for the specified version and build.")
-    except requests.HTTPError as http_err:
-        print(Fore.RED + f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        print(Fore.RED + f"Other error occurred: {err}")
-
-def list_versions():
-    url = "https://api.papermc.io/v2/projects/paper"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        versions = data.get('versions', [])
-        print(Fore.GREEN + "Available Paper versions:")
-        for version in versions:
-            print(Fore.WHITE + version)
-    except requests.HTTPError as http_err:
-        print(Fore.RED + f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        print(Fore.RED + f"Other error occurred: {err}")
-
-def list_builds(version):
-    url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        builds = data.get('builds', [])
-        print(Fore.GREEN + f"Available builds for version {version}:")
-        for build in builds:
-            print(Fore.WHITE + str(build))
-    except requests.HTTPError as http_err:
-        print(Fore.RED + f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        print(Fore.RED + f"Other error occurred: {err}")
+        if response.status_code == 200:
+           data = response.json()
+           changes = data.get("changes", [])
+        for change in changes:
+            summary = change.get("summary", "")
+            return summary
+    except requests.RequestException as e:
+        print(Fore.RED + f"Error fetching changelog: {e}")
+        return None
 
 def reload_script():
     clear_terminal()
@@ -615,9 +583,8 @@ def menu():
         print(Fore.LIGHTGREEN_EX + "2. Check for Update Your Paper Build")
         print(Fore.LIGHTRED_EX + "3. Change Paper Version")
         print(Fore.CYAN + "4. Configure Server Settings")
-        print(Fore.MAGENTA + "5. Show Changelog for Latest Build")
-        print(Fore.LIGHTCYAN_EX + "6. Reload Script (Sync from GitHub raw)")
-        print(Fore.RED + "7. Quit (Please close window to exit if you use EXE version)")
+        print(Fore.LIGHTCYAN_EX + "5. Reload Script (Sync from GitHub raw)")
+        print(Fore.RED + "6. Quit (Please close window to exit if you use EXE version)")
         
         choice = input("Select an option: ").strip()
 
@@ -663,11 +630,8 @@ def menu():
             configure_server()
         elif choice == '5':
             clear_terminal()
-            list_versions()
-        elif choice == '6':
-            clear_terminal()
             reload_script()
-        elif choice == '7':
+        elif choice == '6':
             on_exit()  # Call on_exit to handle active processes before quitting
             clear_terminal()
             print(Fore.MAGENTA + "Thank you for using this script. Goodbye!")
