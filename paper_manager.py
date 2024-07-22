@@ -567,12 +567,6 @@ def configure_server():
         else:
             print(Fore.RED + "Invalid option. Please try again.")
 
-def show_exit_warning():
-    notifier = ToastNotifier()
-    response = ctypes.windll.user32.MessageBoxW(0, "The server is currently running. Are you sure you want to close this window? Unsaved progress may be lost.", "Warning", 0x04 | 0x01)
-    if response == 6:  # If 'Yes' was clicked
-        os._exit(0)
-
 def on_exit():
     """Check and handle active processes before exiting."""
     global active_processes
