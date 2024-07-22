@@ -13,7 +13,6 @@ import threading
 from colorama import Fore
 from threading import Timer, Thread
 from colorama import init, Fore, Style
-from win10toast import ToastNotifier
 
 init(autoreset=True)
 
@@ -57,22 +56,6 @@ text_art = """
 def clear_terminal():
     """Clear terminal content."""
     os.system('cls' if os.name == 'nt' else 'clear')
-
-def notify(title, message):
-    """Show a notification based on the OS."""
-    def show_notification():
-        if platform.system() == 'Windows':
-            toaster = ToastNotifier()
-            toaster.show_toast(title, message)
-        elif platform.system() == 'Darwin':
-            os.system(f"osascript -e 'display notification \"{message}\" with title \"{title}\"'")
-        elif platform.system() == 'Linux':
-            os.system(f"notify-send '{title}' '{message}'")
-        else:
-            print(f"Notification: {title} - {message}")
-
-    notification_thread = threading.Thread(target=show_notification)
-    notification_thread.start()
 
 def get_versions():
     try:
@@ -152,7 +135,6 @@ def start_server_no_loop():
     
     if current_version:
         print(Fore.GREEN + f"Starting server with version: " + Fore.YELLOW + f"{current_version}")
-        notify("Server Starting", f"Server starting with version: {current_version}")
         server_process = run_server(current_version)
         server_process.wait()
         print(Fore.RED + "Server has stopped.")
@@ -209,7 +191,6 @@ def start_server_loop():
         
         if current_version:
             print(Fore.GREEN + f"Starting server with version: " + Fore.YELLOW + f"{current_version}")
-            notify("Server Starting", f"Server starting with version: {current_version}")
             server_process = run_server(current_version)
             server_process.wait()
             print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")

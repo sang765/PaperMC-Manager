@@ -1,4 +1,3 @@
 requests
 colorama
 plyer
-win10toast
