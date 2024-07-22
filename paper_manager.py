@@ -131,10 +131,10 @@ def start_server_no_loop():
     current_version = get_current_version()
     
     if config.get("auto_update", False):
-        check_for_update()
+        check_for_update_auto_mode()
     
     if current_version:
-        print(Fore.GREEN + f"Starting server with version: " + Fore.YELLOW + f"{current_version}")
+        print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
         server_process = run_server(current_version)
         server_process.wait()
         print(Fore.RED + "Server has stopped.")
@@ -187,10 +187,10 @@ def start_server_loop():
         current_version = get_current_version()
         
         if config.get("auto_update", False):
-            check_for_update()
+            check_for_update_auto_mode()
         
         if current_version:
-            print(Fore.GREEN + f"Starting server with version: " + Fore.YELLOW + f"{current_version}")
+            print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
             server_process = run_server(current_version)
             server_process.wait()
             print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")
@@ -205,7 +205,7 @@ def handle_interrupt(signal, frame):
 
 signal.signal(signal.SIGINT, handle_interrupt)
 
-def check_for_update():
+def check_for_update_auto_mode():
     print(Fore.CYAN + "Checking for updates...")
     current_version = get_current_version()
     if current_version:
@@ -230,11 +230,43 @@ def check_for_update():
     else:
         print(Fore.YELLOW + "No current version found, nothing to update.")
 
+def check_for_update():
+    clear_terminal()
+    versions = get_versions()
+    if not versions:
+        return
+
+    minecraft_version = versions[-1]
+    latest_version_url, latest_version_file = get_latest_version_url(minecraft_version)
+    if not latest_version_url:
+        return
+
+    current_version = get_current_version()
+
+    if current_version == latest_version_file:
+        print(Fore.GREEN + "You already have the latest version.")
+        time.sleep(3)
+        return
+
+    print(Fore.CYAN + f"New version available: {latest_version_file}. Do you want to update? (yes/no)")
+    user_input = input().strip().lower()
+
+    if user_input in ['yes', 'y']:
+        if current_version:
+            print(Fore.YELLOW + f"Deleting old version: {current_version}")
+            delete_old_version(current_version)
+
+        print(Fore.BLUE + f"Downloading latest version: {latest_version_file}")
+        download_latest_version(latest_version_url, latest_version_file)
+        clear_terminal()
+    else:
+        print(Fore.YELLOW + "Update skipped. Returning to menu.")
+
 def get_changelog_for_build(version, build_number):
     """
     Get changelog for the specified version and build number.
     """
-    changelog_url = f"https://Paper.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
+    changelog_url = f"https://papermc.io/api/v2/projects/paper/versions/{version}/builds/{build_number}/changelog"
     try:
         response = requests.get(changelog_url)
         response.raise_for_status()
@@ -337,7 +369,7 @@ def get_changelog_menu():
     input(Fore.WHITE + "Press Enter to return to the main menu.")
 
 def get_changelog(version, build):
-    changelog_url = f"https://api.Paper.io/v2/projects/paper/versions/{version}/builds/{build}/changelog"
+    changelog_url = f"https://api.paper.io/v2/projects/paper/versions/{version}/builds/{build}/changelog"
     try:
         response = requests.get(changelog_url)
         response.raise_for_status()
@@ -353,7 +385,7 @@ def get_changelog(version, build):
         print(Fore.RED + f"Other error occurred: {err}")
 
 def list_versions():
-    url = "https://api.Paper.io/v2/projects/paper"
+    url = "https://api.papermc.io/v2/projects/paper"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -368,7 +400,7 @@ def list_versions():
         print(Fore.RED + f"Other error occurred: {err}")
 
 def list_builds(version):
-    url = f"https://api.Paper.io/v2/projects/paper/versions/{version}/builds"
+    url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -442,7 +474,6 @@ def configure_server():
         print(f"18. Online Mode: {Fore.GREEN + 'Enabled' if config.get('online_mode', True) else Fore.RED + 'Disabled'}")
         print(f"19. GC Options: {config.get('gc_options', '-XX:+UseG1GC')}")
         print(f"20. VM Options: {config.get('vm_options', '')}")
-        print(f"21. Auto Update Paper: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
@@ -465,8 +496,7 @@ def configure_server():
         print("18. Toggle Online Mode")
         print("19. Set GC Options")
         print("20. Set VM Options")
-        print("21. Toggle Auto Update Paper")
-        print("22. Save and Return to Menu")
+        print("21. Save and Return to Menu")
 
         choice = input("Select an option: ").strip()
 
@@ -556,10 +586,6 @@ def configure_server():
             config["vm_options"] = vm_options
         elif choice == '21':
             clear_terminal()
-            config["auto_update"] = not config.get("auto_update", False)
-            print(f"Auto Update is now {'Enabled' if config['auto_update'] else 'Disabled'}.")
-        elif choice == '22':
-            clear_terminal()
             save_config(config)
             print(Fore.YELLOW + "Configuration saved. Returning to menu...")
             time.sleep(3)
@@ -606,7 +632,8 @@ def menu():
                 print(Fore.CYAN + "Choose a start option:")
                 print(Fore.YELLOW + "1. Start (Without Restart)")
                 print(Fore.GREEN + "2. Start (Auto Restart)")
-                print(Fore.CYAN + "3. Go Back")
+                print(f"3. Auto Update Paper: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
+                print(Fore.CYAN + "4. Go Back")
                 
                 sub_choice = input("Select an option: ").strip()
 
@@ -617,6 +644,11 @@ def menu():
                     clear_terminal()
                     start_server_loop()
                 elif sub_choice == '3':
+                    clear_terminal()
+                    config["auto_update"] = not config.get("auto_update", False)
+                    print(f"Auto Update is now {'Enabled' if config['auto_update'] else 'Disabled'}.")
+                    save_config(config)
+                elif sub_choice == '4':
                     break
                 else:
                     print(Fore.RED + "Invalid option. Please select a valid option.")
