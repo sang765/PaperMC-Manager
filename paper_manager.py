@@ -571,7 +571,7 @@ def on_exit():
     """Check and handle active processes before exiting."""
     global active_processes
     if any(proc.poll() is None for proc in active_processes):  # Check if any process is running
-        show_exit_warning()
+        print(Fore.RED + "Detected active processes. Exiting gracefully...")
 
 def menu():
     global active_processes
