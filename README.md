@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://i.imgur.com/v27gUcx.png" alt="Paper Manager" width="100">
-  <h1>Paper Manager</h1>
+  <h1>PaperMC Manager</h1>
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Python/python1.svg" alt="BetterDiscord" width="100">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Windows/windows1.svg" alt="BetterDiscord" width="120">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/macOS/macos1.svg" alt="BetterDiscord" width="108">
