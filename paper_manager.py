@@ -251,23 +251,30 @@ def check_for_update():
     current_version = get_current_version()
 
     if current_version == latest_version_file:
-        print(Fore.GREEN + "You already have the latest version.")
+        print(Fore.GREEN + "====================================")
+        print(Fore.GREEN + "You already have the latest version. Returning to menu...")
+        print(Fore.GREEN + "====================================")
         time.sleep(3)
         return
 
-    print(Fore.CYAN + f"New version available: {latest_version_file}. Do you want to update? (yes/no)")
+    print(Fore.YELLOW + "=============================================================================")
+    print(Fore.CYAN + f"New version available: " + Fore.MAGENTA + f"{latest_version_file}" + Fore.CYAN + ". Do you want to update? (" + Fore.GREEN + "yes" + Fore.CYAN + "/" + Fore.RED + "no" + Fore.CYAN + ")")
+    print(Fore.YELLOW + "=============================================================================")
     user_input = input().strip().lower()
 
     if user_input in ['yes', 'y']:
         if current_version:
-            print(Fore.YELLOW + f"Deleting old version: {current_version}")
+            print(Fore.YELLOW + f"Deleting old version: " + Fore.YELLOW + f"{current_version}")
             delete_old_version(current_version)
 
-        print(Fore.BLUE + f"Downloading latest version: {latest_version_file}")
+        print(Fore.BLUE + f"Downloading latest version: " + Fore.MAGENTA + f"{latest_version_file}")
         download_latest_version(latest_version_url, latest_version_file)
         clear_terminal()
     else:
-        print(Fore.YELLOW + "Update skipped. Returning to menu.")
+        print(Fore.YELLOW + "====================================")
+        print(Fore.YELLOW + "Update skipped. Returning to menu...")
+        print(Fore.YELLOW + "====================================")
+        time.sleep(3)
 
 def change_paper_version():
     clear_terminal()
