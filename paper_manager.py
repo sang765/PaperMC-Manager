@@ -22,6 +22,10 @@ builds_url_template = f"https://api.papermc.io/v2/projects/paper/versions/{{vers
 download_url_template = "https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build_number}/downloads/{file_name}"
 
 config_file = "server_config.json"
+GRAY = '\033[1;30m'
+BOLD = '\033[1m'
+ITALIC = '\033[3m'
+RESET = '\033[0m'
 
 default_config = {
     "ram": "4G",
@@ -276,6 +280,15 @@ def check_for_update():
         print(Fore.YELLOW + "====================================")
         time.sleep(3)
 
+def add_indent(text, indent_length):
+    lines = text.split('\n')
+    if len(lines) > 1:
+        # Keep the first line as is and indent the rest
+        first_line = lines[0]
+        rest_lines = [ ' ' * indent_length + line for line in lines[1:] ]
+        return '\n'.join([first_line] + rest_lines)
+    return text
+
 def change_paper_version():
     clear_terminal()
     versions = get_versions()
@@ -284,7 +297,9 @@ def change_paper_version():
     
     clear_terminal()
     print(Fore.MAGENTA + text_art)
-    print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+    S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+    x = S.center(135)
+    print(x)
     print("")
     print("")
     print("")
@@ -293,7 +308,7 @@ def change_paper_version():
         print(Fore.YELLOW + f"{idx}." + Fore.GREEN + f" Minecraft" + Fore.CYAN + f" {version}")
 
     try:
-        choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Minecraft version: " + Fore.YELLOW))
+        choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Minecraft version" + Fore.RED + " '0 = Back to main menu'" + Fore.WHITE + ": " + Fore.YELLOW))
         if choice < 1 or choice > len(versions):
             print(Fore.RED + "Invalid choice.")
             return
@@ -307,7 +322,9 @@ def change_paper_version():
 
         clear_terminal()
         print(Fore.MAGENTA + text_art)
-        print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+        S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+        x = S.center(135)
+        print(x)
         print("")
         print("")
         print("")
@@ -318,42 +335,47 @@ def change_paper_version():
         build_summaries = []
         for build in builds:
             build_number = build['build']
-            summary = get_changelog_for_build(selected_version, build_number)
-            build_summaries.append((build, summary))
+            message = get_changelog_for_build(selected_version, build_number)
+            build_summaries.append((build, message))
             
-        for idx, (build, summary) in enumerate(build_summaries, 1):
+        for idx, (build, message) in enumerate(build_summaries, 1):
             build_number = build['build']
             print(Fore.YELLOW + f"{idx}. " + Fore.GREEN + f"Paper Build " + Fore.CYAN + f"{build_number}")
-            if summary:
-                print(Fore.YELLOW + f"  - Changelog: " + Fore.WHITE + f"{summary}")
+            if message:
+                indented_message = add_indent(message.strip(), 17)
+                print(Fore.YELLOW + f"    - Changelog: " + Fore.WHITE + indented_message)
             else:
-                print(Fore.YELLOW + "  - Changelog:" + Fore.RED + " No changelog available")
+                print(Fore.YELLOW + "    - Changelog: " + GRAY + ITALIC + "No changes" + RESET)
 
-        choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Paper build version: " + Fore.YELLOW))
+        choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Paper build" + Fore.RED + " '0 = Back to main menu'" + Fore.WHITE + ": " + Fore.YELLOW))
         if choice < 1 or choice > len(build_summaries):
             print(Fore.RED + "Invalid choice.")
             return
         
-        selected_build, summary = build_summaries[choice - 1]
+        selected_build, message = build_summaries[choice - 1]
         build_number = selected_build['build']
         file_name = f"paper-{selected_version}-{build_number}.jar"
         download_url = download_url_template.format(version=selected_version, build_number=build_number, file_name=file_name)
         
         clear_terminal()
         print(Fore.MAGENTA + text_art)
-        print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+        S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+        x = S.center(135)
+        print(x)
         print("")
         print("")
         
-        if summary:
+        if message:
             print(Fore.CYAN + "Changelog for build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + ":")
-            print(Fore.WHITE + summary)
+            indented_message = add_indent(message.strip(), 0)
+            print(Fore.WHITE + indented_message)
         else:
-            print(Fore.RED + "No changelog available for this build.")
+            print(Fore.CYAN + "Changelog for build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + ":")
+            print(GRAY + ITALIC + "No changes")
         
         print("")
         print("")
-        print(Fore.CYAN + f"Do you want to download build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + f" for Minecraft version" + Fore.GREEN + f" {selected_version}" + Fore.CYAN + f"? (yes/no)")
+        print(Fore.CYAN + f"Do you want to download build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + f" for Minecraft version" + Fore.GREEN + f" {selected_version}" + Fore.CYAN + f"? (" + Fore.GREEN + "yes" + Fore.CYAN + "/" + Fore.RED + "no" + Fore.CYAN + ")")
         user_input = input().strip().lower()
         
         if user_input in ['yes', 'y']:
@@ -380,11 +402,10 @@ def get_changelog_for_build(version, build_number):
     try:
         response = requests.get(changelog_url)
         if response.status_code == 200:
-           data = response.json()
-           changes = data.get("changes", [])
-        for change in changes:
-            summary = change.get("summary", "")
-            return summary
+            data = response.json()
+            changes = data.get("changes", [])
+            messages = [change.get("message", "").strip() for change in changes]
+            return '\n'.join(messages)
     except requests.RequestException as e:
         print(Fore.RED + f"Error fetching changelog: {e}")
         return None
@@ -392,7 +413,9 @@ def get_changelog_for_build(version, build_number):
 def reload_script():
     clear_terminal()
     print(Fore.MAGENTA + text_art)
-    print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+    S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+    x = S.center(135)
+    print(x)
     print("")
     print(Fore.CYAN + "Reloading script from GitHub...")
 
@@ -424,7 +447,9 @@ def configure_server():
     global config
     while True:
         print(Fore.MAGENTA + text_art)
-        print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+        S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+        x = S.center(135)
+        print(x)
         print("")
         print("")
         print("")
@@ -472,6 +497,9 @@ def configure_server():
         print("19. Set GC Options")
         print("20. Set VM Options")
         print("21. Save and Return to Menu")
+        S = "====="
+        x = S.center(60)
+        print(x)
 
         choice = input("Select an option: ").strip()
 
@@ -581,17 +609,23 @@ def menu():
     while True:
         clear_terminal()
         print(Fore.MAGENTA + text_art)
-        print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+        S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+        x = S.center(135)
+        print(x)
         print("")
         print("")
-        print("")
-        print(Fore.CYAN + "Options:")
-        print(Fore.YELLOW + "1. Start Minecraft Server")
-        print(Fore.LIGHTGREEN_EX + "2. Check for Update Your Paper Build")
-        print(Fore.LIGHTRED_EX + "3. Change Paper Version")
-        print(Fore.CYAN + "4. Configure Server Settings")
-        print(Fore.LIGHTCYAN_EX + "5. Reload Script (Sync from GitHub raw)")
-        print(Fore.RED + "6. Quit (Please close window to exit if you use EXE version)")
+        print("OPTIONS:")
+        S = (Fore.YELLOW + "1. Start Minecraft Server\n" +
+             Fore.LIGHTGREEN_EX + "2. Check for Update Your Paper Build\n" +
+             Fore.LIGHTRED_EX + "3. Change Paper Version\n" +
+             Fore.CYAN + "4. Configure Server Settings\n" +
+             Fore.LIGHTCYAN_EX + "5. Reload Script (Sync from GitHub raw)\n" +
+             Fore.RED + "6. Quit")
+        x = S.center(0)
+        print(x)
+        S = "====="
+        x = S.center(60)
+        print(x)
         
         choice = input("Select an option: ").strip()
 
@@ -599,7 +633,9 @@ def menu():
             clear_terminal()
             while True:
                 print(Fore.MAGENTA + text_art)
-                print(Fore.RED + "========================================== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ==========================================")
+                S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+                x = S.center(135)
+                print(x)
                 print("")
                 print("")
                 print("")
@@ -608,8 +644,15 @@ def menu():
                 print(Fore.GREEN + "2. Start (Auto Restart)")
                 print(f"3. Auto Update Paper: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
                 print(Fore.CYAN + "4. Go Back")
+                S = "====="
+                x = S.center(60)
+                print(x)
                 
                 sub_choice = input("Select an option: ").strip()
+
+                S = "====="
+                x = S.center(60)
+                print(x)
 
                 if sub_choice == '1':
                     clear_terminal()
