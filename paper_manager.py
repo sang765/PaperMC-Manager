@@ -127,8 +127,37 @@ def download_latest_version(url, file_name):
 
 def run_server(file_name):
     ram = config["ram"]
-    nogui_option = "" if not config["nogui"] else "nogui"
-    return subprocess.Popen(['java', f'-Xmx{ram}', '-jar', file_name, nogui_option], cwd=folder_path)
+    nogui_option = "--nogui" if config["nogui"] else ""
+    java_flags = [
+        f'-Xms{ram}', f'-Xmx{ram}',
+        '--add-modules=jdk.incubator.vector',
+        '-XX:+UseG1GC',
+        '-XX:+ParallelRefProcEnabled',
+        '-XX:MaxGCPauseMillis=200',
+        '-XX:+UnlockExperimentalVMOptions',
+        '-XX:+DisableExplicitGC',
+        '-XX:+AlwaysPreTouch',
+        '-XX:G1HeapWastePercent=5',
+        '-XX:G1MixedGCCountTarget=4',
+        '-XX:InitiatingHeapOccupancyPercent=15',
+        '-XX:G1MixedGCLiveThresholdPercent=90',
+        '-XX:G1RSetUpdatingPauseTimePercent=5',
+        '-XX:SurvivorRatio=32',
+        '-XX:+PerfDisableSharedMem',
+        '-XX:MaxTenuringThreshold=1',
+        '-Dusing.aikars.flags=https://mcflags.emc.gs',
+        '-Daikars.new.flags=true',
+        '-XX:G1NewSizePercent=30',
+        '-XX:G1MaxNewSizePercent=40',
+        '-XX:G1HeapRegionSize=8M',
+        '-XX:G1ReservePercent=20',
+        '-jar', file_name
+    ]
+    
+    if nogui_option:
+        java_flags.append(nogui_option)
+
+    return subprocess.Popen(['java'] + java_flags, cwd=folder_path)
 
 def start_server_no_loop():
     clear_terminal()
@@ -472,8 +501,6 @@ def configure_server():
         print(f"16. Hardcore Mode: {Fore.GREEN + 'Yes' if config.get('hardcore', False) else Fore.RED + 'No'}")
         print(f"17. Allow Flight: {Fore.GREEN + 'Yes' if config.get('allow_flight', False) else Fore.RED + 'No'}")
         print(f"18. Online Mode: {Fore.GREEN + 'Enabled' if config.get('online_mode', True) else Fore.RED + 'Disabled'}")
-        print(f"19. GC Options: {config.get('gc_options', '-XX:+UseG1GC')}")
-        print(f"20. VM Options: {config.get('vm_options', '')}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
@@ -494,9 +521,7 @@ def configure_server():
         print("16. Toggle Hardcore Mode")
         print("17. Toggle Allow Flight")
         print("18. Toggle Online Mode")
-        print("19. Set GC Options")
-        print("20. Set VM Options")
-        print("21. Save and Return to Menu")
+        print("19. Save and Return to Menu")
         S = "====="
         x = S.center(60)
         print(x)
@@ -580,14 +605,6 @@ def configure_server():
             config["online_mode"] = not config.get("online_mode", True)
             print(f"Online Mode is now {'Enabled' if config['online_mode'] else 'Disabled'}.")
         elif choice == '19':
-            clear_terminal()
-            gc_options = input("Enter GC options (e.g., '-XX:+UseG1GC'): ").strip()
-            config["gc_options"] = gc_options
-        elif choice == '20':
-            clear_terminal()
-            vm_options = input("Enter VM options (e.g., '-Xmx4G -Xms2G'): ").strip()
-            config["vm_options"] = vm_options
-        elif choice == '21':
             clear_terminal()
             save_config(config)
             print(Fore.YELLOW + "Configuration saved. Returning to menu...")
