@@ -485,43 +485,11 @@ def configure_server():
         print(Fore.CYAN + "Current configuration:")
         print(f"1. RAM: {config['ram']}")
         print(f"2. GUI Mode: {Fore.GREEN + 'Enabled' if not config['nogui'] else Fore.RED + 'Disabled'}")
-        print(f"3. Server Port: {config.get('port', 25565)}")
-        print(f"4. Server IP: {config.get('ip', '')}")
-        print(f"5. Max Players: {config.get('max_players', 20)}")
-        print(f"6. Difficulty: {config.get('difficulty', 'normal')}")
-        print(f"7. View Distance: {config.get('view_distance', 10)}")
-        print(f"8. Allow Nether: {Fore.GREEN + 'Yes' if config.get('allow_nether', True) else Fore.RED + 'No'}")
-        print(f"9. Spawn Animals: {Fore.GREEN + 'Yes' if config.get('spawn_animals', True) else Fore.RED + 'No'}")
-        print(f"10. Spawn Monsters: {Fore.GREEN + 'Yes' if config.get('spawn_monsters', True) else Fore.RED + 'No'}")
-        print(f"11. Max Build Height: {config.get('max_build_height', 256)}")
-        print(f"12. Server Message: {config.get('server_message', 'Welcome to the server!')}")
-        print(f"13. World Name: {config.get('world_name', 'world')}")
-        print(f"14. Whitelist: {Fore.GREEN + 'Enabled' if config.get('whitelist', False) else Fore.RED + 'Disabled'}")
-        print(f"15. Enable Command Blocks: {Fore.GREEN + 'Yes' if config.get('enable_command_blocks', True) else Fore.RED + 'No'}")
-        print(f"16. Hardcore Mode: {Fore.GREEN + 'Yes' if config.get('hardcore', False) else Fore.RED + 'No'}")
-        print(f"17. Allow Flight: {Fore.GREEN + 'Yes' if config.get('allow_flight', False) else Fore.RED + 'No'}")
-        print(f"18. Online Mode: {Fore.GREEN + 'Enabled' if config.get('online_mode', True) else Fore.RED + 'Disabled'}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
         print("2. Toggle GUI Mode")
-        print("3. Set Server Port")
-        print("4. Set Server IP")
-        print("5. Set Max Players")
-        print("6. Set Difficulty")
-        print("7. Set View Distance")
-        print("8. Toggle Allow Nether")
-        print("9. Toggle Spawn Animals")
-        print("10. Toggle Spawn Monsters")
-        print("11. Set Max Build Height")
-        print("12. Set Server Message")
-        print("13. Set World Name")
-        print("14. Toggle Whitelist")
-        print("15. Toggle Command Blocks")
-        print("16. Toggle Hardcore Mode")
-        print("17. Toggle Allow Flight")
-        print("18. Toggle Online Mode")
-        print("19. Save and Return to Menu")
+        print("3. Save and Return to Menu")
         S = "====="
         x = S.center(60)
         print(x)
@@ -537,74 +505,6 @@ def configure_server():
             config["nogui"] = not config["nogui"]
             print(f"GUI Mode is now {'Enabled' if not config['nogui'] else 'Disabled'}.")
         elif choice == '3':
-            clear_terminal()
-            port = int(input("Enter server port: ").strip())
-            config["port"] = port
-        elif choice == '4':
-            clear_terminal()
-            ip = input("Enter server IP (leave blank for all IPs): ").strip()
-            config["ip"] = ip
-        elif choice == '5':
-            clear_terminal()
-            max_players = int(input("Enter maximum number of players: ").strip())
-            config["max_players"] = max_players
-        elif choice == '6':
-            clear_terminal()
-            difficulty = input("Enter difficulty (peaceful, easy, normal, hard): ").strip()
-            if difficulty in ["peaceful", "easy", "normal", "hard"]:
-                config["difficulty"] = difficulty
-            else:
-                print(Fore.RED + "Invalid difficulty. Defaulting to 'normal'.")
-                config["difficulty"] = "normal"
-        elif choice == '7':
-            clear_terminal()
-            view_distance = int(input("Enter view distance (default is 10): ").strip())
-            config["view_distance"] = view_distance
-        elif choice == '8':
-            clear_terminal()
-            config["allow_nether"] = not config.get("allow_nether", True)
-            print(f"Allow Nether is now {'Enabled' if config['allow_nether'] else 'Disabled'}.")
-        elif choice == '9':
-            clear_terminal()
-            config["spawn_animals"] = not config.get("spawn_animals", True)
-            print(f"Spawn Animals is now {'Enabled' if config['spawn_animals'] else 'Disabled'}.")
-        elif choice == '10':
-            clear_terminal()
-            config["spawn_monsters"] = not config.get("spawn_monsters", True)
-            print(f"Spawn Monsters is now {'Enabled' if config['spawn_monsters'] else 'Disabled'}.")
-        elif choice == '11':
-            clear_terminal()
-            max_build_height = int(input("Enter max build height (default is 256): ").strip())
-            config["max_build_height"] = max_build_height
-        elif choice == '12':
-            clear_terminal()
-            server_message = input("Enter server message: ").strip()
-            config["server_message"] = server_message
-        elif choice == '13':
-            clear_terminal()
-            world_name = input("Enter world name: ").strip()
-            config["world_name"] = world_name
-        elif choice == '14':
-            clear_terminal()
-            config["whitelist"] = not config.get("whitelist", False)
-            print(f"Whitelist is now {'Enabled' if config['whitelist'] else 'Disabled'}.")
-        elif choice == '15':
-            clear_terminal()
-            config["enable_command_blocks"] = not config.get("enable_command_blocks", True)
-            print(f"Command Blocks are now {'Enabled' if config['enable_command_blocks'] else 'Disabled'}.")
-        elif choice == '16':
-            clear_terminal()
-            config["hardcore"] = not config.get("hardcore", False)
-            print(f"Hardcore Mode is now {'Enabled' if config['hardcore'] else 'Disabled'}.")
-        elif choice == '17':
-            clear_terminal()
-            config["allow_flight"] = not config.get("allow_flight", False)
-            print(f"Allow Flight is now {'Enabled' if config['allow_flight'] else 'Disabled'}.")
-        elif choice == '18':
-            clear_terminal()
-            config["online_mode"] = not config.get("online_mode", True)
-            print(f"Online Mode is now {'Enabled' if config['online_mode'] else 'Disabled'}.")
-        elif choice == '19':
             clear_terminal()
             save_config(config)
             print(Fore.YELLOW + "Configuration saved. Returning to menu...")
