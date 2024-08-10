@@ -172,6 +172,8 @@ def start_server_no_loop():
         server_process = run_server(current_version)
         server_process.wait()
         print(Fore.RED + f"====================== SERVER STOPED =====================")
+        print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+        print(Fore.RED + f"==========================================================")
         print(Fore.YELLOW + "Back to menu...")
         time.sleep(1)
         menu()
@@ -227,10 +229,12 @@ def start_server_loop():
         if current_version:
             print(Fore.GREEN + f"=================== STARTING SERVER ==================")
             print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+            print(Fore.GREEN + f"======================================================")
             server_process = run_server(current_version)
             server_process.wait()
             print(Fore.RED + f"====================== SERVER STOPED =====================")
             print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")
+            print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
             print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
             print(Fore.RED + f"==========================================================")
             print()
@@ -297,10 +301,12 @@ def check_for_update():
 
     if user_input in ['yes', 'y']:
         if current_version:
-            print(Fore.YELLOW + f"Deleting old version: " + Fore.YELLOW + f"{current_version}")
+            print(Fore.GREEN + "====================================")
+            print(Fore.RED + f"Deleting old version: " + Fore.YELLOW + f"{current_version}")
             delete_old_version(current_version)
 
         print(Fore.BLUE + f"Downloading latest version: " + Fore.MAGENTA + f"{latest_version_file}")
+        print(Fore.GREEN + "====================================")
         download_latest_version(latest_version_url, latest_version_file)
         clear_terminal()
     else:
