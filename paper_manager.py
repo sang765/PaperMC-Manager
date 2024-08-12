@@ -106,8 +106,7 @@ def get_latest_version_url(version):
 
 def get_current_version():
     for file in os.listdir(folder_path):
-        match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file)
-        match = re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', file)
+        match = re.match(r'paper-(\d+(?:\.\d+){1,2})-(\d+)\.jar', file)
         if match:
             return file
     return None
@@ -255,26 +254,28 @@ def check_for_update_auto_mode():
     print(Fore.CYAN + "Checking for updates...")
     current_version = get_current_version()
     if current_version:
-        current_version_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', current_version)
-        current_version_match = re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', current_version)
-        current_version_number = current_version_match.group(1)
-        current_build_number = int(current_version_match.group(2))
-        download_url, file_name = get_latest_version_url(current_version_number)
-        
-        if download_url:
-            latest_build_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file_name)
-            latest_build_match = re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', file_name)
-            latest_build_number = int(latest_build_match.group(2))
-            
-            if latest_build_number > current_build_number:
-                print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
-                delete_old_version(current_version)
-                download_latest_version(download_url, file_name)
-                get_changelog_for_build(current_version_number, latest_build_number)
+        current_version_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', current_version) or re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', current_version)
+        if current_version_match:
+            current_version_number = current_version_match.group(1)
+            current_build_number = int(current_version_match.group(2))
+            download_url, file_name = get_latest_version_url(current_version_number)
+
+            if download_url:
+                latest_build_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file_name) or re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', file_name)
+                if latest_build_match:
+                    latest_build_number = int(latest_build_match.group(2))
+
+                    if latest_build_number > current_build_number:
+                        print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
+                        delete_old_version(current_version)
+                        download_latest_version(download_url, file_name)
+                        get_changelog_for_build(current_version_number, latest_build_number)
+                    else:
+                        print(Fore.GREEN + "You are already using the latest version.")
+                else:
+                    print(Fore.RED + "Failed to parse the latest version file name.")
             else:
-                print(Fore.GREEN + "You are already using the latest version.")
-        else:
-            print(Fore.RED + "Failed to fetch the latest version URL.")
+                print(Fore.RED + "Failed to fetch the latest version URL.")
     else:
         print(Fore.YELLOW + "No current version found, nothing to update.")
 
