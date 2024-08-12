@@ -1,10 +1,19 @@
-import requests
-import ctypes
-import sys
-import time
 import importlib
-import subprocess
 import os
+import requests
+import re
+import subprocess
+import time
+import json
+import signal
+import ctypes
+import platform
+import threading
+import sys
+import threading
+from colorama import Fore
+from threading import Timer, Thread
+from colorama import init, Fore, Style
 
 ctypes.windll.kernel32.SetConsoleTitleW("PaperMC Manager")
 
