@@ -234,7 +234,7 @@ def start_server_loop():
             server_process = run_server(current_version)
             server_process.wait()
             print(Fore.RED + f"====================== SERVER STOPED =====================")
-            print(Fore.RED + "Server has stopped. Kill terminal in 5 seconds to stop.")
+            print(Fore.RED + "Server has stopped. Click " + Fore.GREEN + "\"Ctrl + C\"" + Fore.RED + " in 5 seconds to go back" + Fore.YELLOW + " to main menu.")
             print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
             print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
             print(Fore.RED + f"==========================================================")
@@ -245,8 +245,9 @@ def start_server_loop():
             break
 
 def handle_interrupt(signal, frame):
-    print(Fore.RED + "Detected interruption signal. Exiting gracefully...")
-    sys.exit(0)
+    print(Fore.RED + "Detected interruption signal. Back to main menu...")
+    time.sleep(1)
+    menu()
 
 signal.signal(signal.SIGINT, handle_interrupt)
 
@@ -612,7 +613,8 @@ def menu():
         elif choice == '6':
             on_exit()  # Call on_exit to handle active processes before quitting
             clear_terminal()
-            print(Fore.MAGENTA + "Thank you for using this script. Goodbye!")
+            print(Fore.MAGENTA + "Thank you for using this script. If you like this script don't forgot leave a star on " + GRAY + "GitHub" + RESET + Fore.MAGENTA + " page: " + GRAY + BOLD + "\nhttps://github.com/sang765/PaperMC-Manager" + RESET + Fore.MAGENTA + "\nGoodbye and have a nice day!")
+            time.sleep(5)
             sys.exit()
         else:
             print(Fore.RED + "Invalid option. Please try again.")

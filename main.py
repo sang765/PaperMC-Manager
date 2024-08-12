@@ -76,6 +76,7 @@ def load_module_from_github(url):
         return None
 
 def check_internet_connection():
+    print("Checking internet connection...")
     try:
         requests.get('https://www.google.com/', timeout=5)
         return True
@@ -84,9 +85,13 @@ def check_internet_connection():
 
 if __name__ == "__main__":
     if check_internet_connection():
-        print("Internet connection detected.")
+        print("Internet connection detected. Please wait to sync script on GitHub page...")
+        time.sleep(1)
+        print("Done! Enjoy using PaperMC-Manager.")
+        time.sleep(1.5)
     else:
-        print("No internet connection detected.")
+        print("No internet connection detected. Please check your internet connection and try again.")
+        time.sleep(1.5)
     
     # Load and use the module
     module = load_module_from_github('https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py')
@@ -97,7 +102,7 @@ def main():
         module_url = 'https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py'
         
         if is_connected():
-            print("Internet connection detected.")
+            print("Internet connection detected. Please wait...")
             install_requirements(requirements_url)
             module = load_module_from_github(module_url)
             
