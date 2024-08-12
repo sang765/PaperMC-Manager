@@ -107,6 +107,7 @@ def get_latest_version_url(version):
 def get_current_version():
     for file in os.listdir(folder_path):
         match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file)
+        match = re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', file)
         if match:
             return file
     return None
@@ -169,6 +170,7 @@ def start_server_no_loop():
     if current_version:
         print(Fore.GREEN + f"=================== STARTING SERVER ==================")
         print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+        print(Fore.GREEN + f"======================================================")
         server_process = run_server(current_version)
         server_process.wait()
         print(Fore.RED + f"====================== SERVER STOPED =====================")
@@ -254,12 +256,14 @@ def check_for_update_auto_mode():
     current_version = get_current_version()
     if current_version:
         current_version_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', current_version)
+        current_version_match = re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', current_version)
         current_version_number = current_version_match.group(1)
         current_build_number = int(current_version_match.group(2))
         download_url, file_name = get_latest_version_url(current_version_number)
         
         if download_url:
             latest_build_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file_name)
+            latest_build_match = re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', file_name)
             latest_build_number = int(latest_build_match.group(2))
             
             if latest_build_number > current_build_number:
