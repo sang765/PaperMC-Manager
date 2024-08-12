@@ -1,7 +1,5 @@
 {
     "ram": "4G",
     "nogui": true,
-    "online_mode": true,
-    "auto_update": false,
-    "port": 25565
+    "auto_update": false
 }

