@@ -90,4 +90,7 @@ VSCode Preview:
    - Run the EXE file by double-clicking it or executing it from the command line.
 
 ## Note 
-- This script is not affliated with PaperMC team.
+- This script is not affiliated with PaperMC team.
+- If you see **PaperMC_Manager.exe** or **main.exe** of PaperMC Manager got malicious on [this](https://www.virustotal.com/gui/file/893fd96c0879418d6b7e75a2c88aafe48b70214e29e335388b619279101e6570)? Don't worry this executable **100% safe**. The reason this executable got malicious on VirusTotal because I use **pyinstall with UPX**.
+
+![VT Test Image](assets/VT_Test.png)
