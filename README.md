@@ -40,7 +40,7 @@ This script helps manage Minecraft servers using **[Paper](https://github.com/Pa
 
 ## Screenshot:
 
-> ![NOTE]
+> [!NOTE]
 >
 > These are old screenshots so if you see a difference between the preview and the script you are running, please forgive me.
 
