@@ -1,5 +1,1 @@
-{
-    "ram": "4G",
-    "nogui": true,
-    "auto_update": false
-}
+{"ram": "4G", "nogui": "True", "auto_update": "False", "server_path": ""}

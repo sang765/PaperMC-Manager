@@ -10,6 +10,8 @@ import platform
 import threading
 import sys
 import threading
+import tkinter as tk
+from tkinter import filedialog
 from colorama import Fore
 from threading import Timer, Thread
 from colorama import init, Fore, Style
@@ -30,31 +32,53 @@ RESET = '\033[0m'
 default_config = {
     "ram": "4G",
     "nogui": True,
-    "auto_update": False
+    "auto_update": False,
+    "server_path": ""
 }
 
+def select_server_folder():
+    root = tk.Tk()
+    root.withdraw()
+    folder_path = filedialog.askdirectory(title="Choose folder have PaperMC JAR file")
+    return folder_path
+
+def check_papermc_folder(folder_path):
+    for file in os.listdir(folder_path):
+        match = re.match(r'paper-(\d+(?:\.\d+){1,2})-(\d+)\.jar', file)
+        if match:
+            return True
+    return False
+
 def load_config():
-    if os.path.exists(config_file):
-        with open(config_file, 'r') as f:
-            return json.load(f)
-    else:
-        save_config(default_config)
-        return default_config
+    try:
+        with open('server_config.json', 'r') as f:
+            content = f.read()
+            if not content:
+                print("File server_config.json trống")
+                return {}
+            config = json.loads(content)
+            return config
+    except FileNotFoundError:
+        print("File server_config.json không tồn tại")
+        return {}
+    except json.JSONDecodeError as e:
+        print("File server_config.json không đúng định dạng JSON: ", str(e))
+        return {}
 
 def save_config(config):
-    with open(config_file, 'w') as f:
-        json.dump(config, f, indent=4)
-        print(Fore.GREEN + "Configuration saved successfully.")
+    with open('server_config.json', 'w') as f:
+        f.write(json.dumps(config))
+    print(Fore.GREEN + "Configuration saved successfully.")
 
 config = load_config()
 
 text_art = """
-██████╗  █████╗ ██████╗ ███████╗██████╗     ███╗   ███╗ █████╗ ███╗   ██╗ █████╗  ██████╗ ███████╗██████╗ 
-██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗    ████╗ ████║██╔══██╗████╗  ██║██╔══██╗██╔════╝ ██╔════╝██╔══██╗
-██████╔╝███████║██████╔╝█████╗  ██████╔╝    ██╔████╔██║███████║██╔██╗ ██║███████║██║  ███╗█████╗  ██████╔╝
-██╔═══╝ ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗    ██║╚██╔╝██║██╔══██║██║╚██╗██║██╔══██║██║   ██║██╔══╝  ██╔══██╗
-██║     ██║  ██║██║     ███████╗██║  ██║    ██║ ╚═╝ ██║██║  ██║██║ ╚████║██║  ██║╚██████╔╝███████╗██║  ██║
-╚═╝     ╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝    ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
+██████╗░░█████╗░██████╗░███████╗██████╗░███╗░░░███╗░█████╗░  ███╗░░░███╗░█████╗░███╗░░██╗░█████╗░░██████╗░███████╗██████╗░
+██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗████╗░████║██╔══██╗  ████╗░████║██╔══██╗████╗░██║██╔══██╗██╔════╝░██╔════╝██╔══██╗
+██████╔╝███████║██████╔╝█████╗░░██████╔╝██╔████╔██║██║░░╚═╝  ██╔████╔██║███████║██╔██╗██║███████║██║░░██╗░█████╗░░██████╔╝
+██╔═══╝░██╔══██║██╔═══╝░██╔══╝░░██╔══██╗██║╚██╔╝██║██║░░██╗  ██║╚██╔╝██║██╔══██║██║╚████║██╔══██║██║░░╚██╗██╔══╝░░██╔══██╗
+██║░░░░░██║░░██║██║░░░░░███████╗██║░░██║██║░╚═╝░██║╚█████╔╝  ██║░╚═╝░██║██║░░██║██║░╚███║██║░░██║╚██████╔╝███████╗██║░░██║
+╚═╝░░░░░╚═╝░░╚═╝╚═╝░░░░░╚══════╝╚═╝░░╚═╝╚═╝░░░░░╚═╝░╚════╝░  ╚═╝░░░░░╚═╝╚═╝░░╚═╝╚═╝░░╚══╝╚═╝░░╚═╝░╚═════╝░╚══════╝╚═╝░░╚═╝
 """
 
 def clear_terminal():
@@ -92,6 +116,17 @@ def get_builds_for_version(version):
         print(Fore.RED + f"Failed to fetch builds. Error: {e}")
         return []
 
+def get_current_version(server_path):
+    for file in os.listdir(config['server_path']):
+        if file.endswith('.jar'):
+            match = re.match(r'paper-(\d+(?:\.\d+){1,2})-(\d+)\.jar', file)
+            if match:
+                return file
+    return None
+
+def delete_old_version(file_name):
+    os.remove(os.path.join(folder_path, file_name))
+
 def get_latest_version_url(version):
     builds = get_builds_for_version(version)
     if not builds:
@@ -100,30 +135,13 @@ def get_latest_version_url(version):
     latest_build = max(builds, key=lambda b: b['build'])
     build_number = latest_build['build']
     file_name = f"paper-{version}-{build_number}.jar"
+    
+    if os.path.exists(os.path.join(config['server_path'], file_name)):
+        return None, None
+    
     download_url = download_url_template.format(version=version, build_number=build_number, file_name=file_name)
     print(Fore.GREEN + f"URL fetched successfully: {Fore.YELLOW}{download_url}")
     return download_url, file_name
-
-def get_current_version():
-    for file in os.listdir(folder_path):
-        match = re.match(r'paper-(\d+(?:\.\d+){1,2})-(\d+)\.jar', file)
-        if match:
-            return file
-    return None
-
-def delete_old_version(file_name):
-    os.remove(os.path.join(folder_path, file_name))
-
-def download_latest_version(url, file_name):
-    try:
-        print(Fore.CYAN + f"Downloading the latest version from:" + Fore.YELLOW + f" {url}")
-        response = requests.get(url)
-        response.raise_for_status()
-        with open(os.path.join(folder_path, file_name), 'wb') as file:
-            file.write(response.content)
-        print(Fore.GREEN + "Download completed.")
-    except requests.RequestException as e:
-        print(Fore.RED + f"Failed to download the latest version. Error: {e}")
 
 def run_server(file_name):
     ram = config["ram"]
@@ -158,28 +176,6 @@ def run_server(file_name):
         java_flags.append(nogui_option)
 
     return subprocess.Popen(['java'] + java_flags, cwd=folder_path)
-
-def start_server_no_loop():
-    clear_terminal()
-    current_version = get_current_version()
-    
-    if config.get("auto_update", False):
-        check_for_update_auto_mode()
-    
-    if current_version:
-        print(Fore.GREEN + f"=================== STARTING SERVER ==================")
-        print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
-        print(Fore.GREEN + f"======================================================")
-        server_process = run_server(current_version)
-        server_process.wait()
-        print(Fore.RED + f"====================== SERVER STOPED =====================")
-        print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
-        print(Fore.RED + f"==========================================================")
-        print(Fore.YELLOW + "Back to menu...")
-        time.sleep(1)
-        menu()
-    else:
-        print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
 
 def read_input_with_timeout(prompt, timeout):
     if platform.system() == 'Windows':
@@ -219,31 +215,6 @@ def read_input_unix(prompt, timeout):
     
     return ''.join(input_chars).strip().lower()
 
-def start_server_loop():
-    clear_terminal()
-    while True:
-        current_version = get_current_version()
-        
-        if config.get("auto_update", False):
-            check_for_update_auto_mode()
-        
-        if current_version:
-            print(Fore.GREEN + f"=================== STARTING SERVER ==================")
-            print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
-            print(Fore.GREEN + f"======================================================")
-            server_process = run_server(current_version)
-            server_process.wait()
-            print(Fore.RED + f"====================== SERVER STOPED =====================")
-            print(Fore.RED + "Server has stopped. Click " + Fore.GREEN + "\"Ctrl + C\"" + Fore.RED + " in 5 seconds to go back" + Fore.YELLOW + " to main menu.")
-            print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
-            print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
-            print(Fore.RED + f"==========================================================")
-            print()
-            time.sleep(5)
-        else:
-            print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
-            break
-
 def handle_interrupt(signal, frame):
     print(Fore.RED + "Detected interruption signal. Back to main menu...")
     time.sleep(1)
@@ -251,9 +222,101 @@ def handle_interrupt(signal, frame):
 
 signal.signal(signal.SIGINT, handle_interrupt)
 
+def start_server_no_loop():
+    clear_terminal()
+    config = load_config()
+    server_path = config['server_path']
+    project_dir = os.getcwd()
+    server_path_abs = os.path.join(project_dir, server_path)
+    current_version = get_current_version(server_path)
+
+    if server_path:
+        if config.get("auto_update", False):
+            check_for_update_auto_mode()
+        if current_version:
+            jar_file = os.path.join(server_path_abs, current_version)
+            if os.path.exists(jar_file):
+                print(Fore.GREEN + f"=================== STARTING SERVER ==================")
+                print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+                print(Fore.GREEN + f"======================================================")
+                server_process = run_server(jar_file)
+                server_process.wait()
+                print(Fore.RED + f"====================== SERVER STOPED =====================")
+                print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+                print(Fore.RED + f"==========================================================")
+                print(Fore.YELLOW + "Back to menu...")
+                time.sleep(1)
+                menu()
+            else:
+                print(Fore.YELLOW + f"File jar {current_version} does not exist at path {server_path_abs}")
+        else:
+            print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
+    else:
+        print("Server path not set. Please configure config")
+
+def start_server_loop():
+    clear_terminal()
+    config = load_config()
+    server_path = config['server_path']
+    project_dir = os.getcwd()
+    server_path_abs = os.path.join(project_dir, server_path)
+    current_version = get_current_version(server_path)
+
+    if server_path:
+        while True:
+            current_version = get_current_version(server_path)
+            if config.get("auto_update", False):
+                check_for_update_auto_mode()
+            if current_version:
+                jar_file = os.path.join(server_path_abs, current_version)
+                if os.path.exists(jar_file):
+                    print(Fore.GREEN + f"=================== STARTING SERVER ==================")
+                    print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+                    print(Fore.GREEN + f"======================================================")
+                    server_process = run_server(jar_file)
+                    server_process.wait()
+                    print(Fore.RED + f"====================== SERVER STOPED =====================")
+                    print(Fore.RED + "Server has stopped. Click " + Fore.GREEN + "\"Ctrl + C\"" + Fore.RED + " in 5 seconds to go back" + Fore.YELLOW + " to main menu.")
+                    print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+                    print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
+                    print(Fore.RED + f"==========================================================")
+                    print()
+                    time.sleep(5)
+                else:
+                    print(Fore.YELLOW + f"File jar {current_version} does not exist at path {server_path_abs}")
+                    break
+            else:
+                print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
+                break
+    else:
+        print("Server path not set. Please configure config")
+
+def check_server_path():
+    config = load_config()
+    server_path = config.get('server_path', '')
+    if not server_path or not os.path.exists(server_path):
+        print(Fore.RED + "Server path not set or does not exist. Please choose a folder with PaperMC JAR file.")
+        new_server_path = select_server_folder()
+        if not check_papermc_folder(new_server_path):
+            print(Fore.RED + "The selected folder does not contain a PaperMC JAR file. Do you want download it? (y/n)")
+            choice = input().strip().lower()
+            if choice == 'y':
+                change_paper_version()
+            else:
+                print(Fore.RED + "Back to main menu...")
+                return menu()
+        config['server_path'] = new_server_path
+        save_config(config)
+    elif not check_papermc_folder(server_path):
+        print(Fore.RED + "The server path does not contain a PaperMC JAR file. Please choose another folder.")
+        new_server_path = select_server_folder()
+        config['server_path'] = new_server_path
+        save_config(config)
+    return config
+
 def check_for_update_auto_mode():
     print(Fore.CYAN + "Checking for updates...")
-    current_version = get_current_version()
+    current_version = get_current_version(config['server_path'])
     if current_version:
         current_version_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', current_version) or re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', current_version)
         if current_version_match:
@@ -280,26 +343,33 @@ def check_for_update_auto_mode():
     else:
         print(Fore.YELLOW + "No current version found, nothing to update.")
 
+def download_latest_version(download_url, file_name, server_path):
+    print(f"Downloading latest version from {download_url}...")
+    response = requests.get(download_url)
+    with open(os.path.join(config['server_path'], file_name), 'wb') as f:
+        f.write(response.content)
+    print(f"Download complete. Saved to {config['server_path']}/{file_name}")
+
 def check_for_update():
     clear_terminal()
     versions = get_versions()
     if not versions:
         return
-
+    
     minecraft_version = versions[-1]
     latest_version_url, latest_version_file = get_latest_version_url(minecraft_version)
     if not latest_version_url:
         return
-
-    current_version = get_current_version()
-
+    
+    current_version = get_current_version(server_path = config['server_path'])
+    
     if current_version == latest_version_file:
         print(Fore.GREEN + "====================================")
         print(Fore.GREEN + "You already have the latest version. Returning to menu...")
         print(Fore.GREEN + "====================================")
         time.sleep(3)
         return
-
+    
     print(Fore.YELLOW + "=============================================================================")
     print(Fore.CYAN + f"New version available: " + Fore.MAGENTA + f"{latest_version_file}" + Fore.CYAN + ". Do you want to update? (" + Fore.GREEN + "yes" + Fore.CYAN + "/" + Fore.RED + "no" + Fore.CYAN + ")")
     print(Fore.YELLOW + "=============================================================================")
@@ -313,7 +383,7 @@ def check_for_update():
 
         print(Fore.BLUE + f"Downloading latest version: " + Fore.MAGENTA + f"{latest_version_file}")
         print(Fore.GREEN + "====================================")
-        download_latest_version(latest_version_url, latest_version_file)
+        download_latest_version(latest_version_url, os.path.join(config['server_path'], latest_version_file))
         clear_terminal()
     else:
         print(Fore.YELLOW + "====================================")
@@ -336,10 +406,12 @@ def change_paper_version():
     if not versions:
         return
     
+    server_path = config['server_path']
+
     clear_terminal()
     print(Fore.MAGENTA + text_art)
     S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-    x = S.center(135)
+    x = S.center(150)
     print(x)
     print("")
     print("")
@@ -364,7 +436,7 @@ def change_paper_version():
         clear_terminal()
         print(Fore.MAGENTA + text_art)
         S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-        x = S.center(135)
+        x = S.center(150)
         print(x)
         print("")
         print("")
@@ -401,7 +473,7 @@ def change_paper_version():
         clear_terminal()
         print(Fore.MAGENTA + text_art)
         S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-        x = S.center(135)
+        x = S.center(150)
         print(x)
         print("")
         print("")
@@ -420,13 +492,13 @@ def change_paper_version():
         user_input = input().strip().lower()
         
         if user_input in ['yes', 'y']:
-            current_version = get_current_version()
+            current_version = get_current_version(server_path)
             if current_version:
                 print(Fore.YELLOW + f"Deleting old version: " + Fore.RED + f"{current_version}")
                 delete_old_version(current_version)
             
             print(Fore.BLUE + f"Downloading selected version:" + Fore.GREEN + f" {file_name}")
-            download_latest_version(download_url, file_name)
+            download_latest_version(download_url, file_name, server_path)
             print(Fore.GREEN + f"Version updated to:" + Fore.YELLOW + f" {file_name}")
             clear_terminal()
         else:
@@ -455,7 +527,7 @@ def reload_script():
     clear_terminal()
     print(Fore.MAGENTA + text_art)
     S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-    x = S.center(135)
+    x = S.center(150)
     print(x)
     print("")
     print(Fore.CYAN + "Reloading script from GitHub...")
@@ -489,7 +561,7 @@ def configure_server():
     while True:
         print(Fore.MAGENTA + text_art)
         S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-        x = S.center(135)
+        x = S.center(150)
         print(x)
         print("")
         print("")
@@ -497,11 +569,13 @@ def configure_server():
         print(Fore.CYAN + "Current configuration:")
         print(f"1. RAM: {config['ram']}")
         print(f"2. GUI Mode: {Fore.GREEN + 'Enabled' if not config['nogui'] else Fore.RED + 'Disabled'}")
+        print(f"3. Server Path: {config.get('server_path', 'Not set')}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
         print("2. Toggle GUI Mode")
-        print("3. Save and Return to Menu")
+        print("3. Set Server Path")
+        print("4. Save and Return to Menu")
         S = "====="
         x = S.center(60)
         print(x)
@@ -517,6 +591,11 @@ def configure_server():
             config["nogui"] = not config["nogui"]
             print(f"GUI Mode is now {'Enabled' if not config['nogui'] else 'Disabled'}.")
         elif choice == '3':
+            clear_terminal()
+            server_path = select_server_folder()
+            config["server_path"] = server_path
+            print(f"Server path set to {server_path}.")
+        elif choice == '4':
             clear_terminal()
             save_config(config)
             print(Fore.YELLOW + "Configuration saved. Returning to menu...")
@@ -539,7 +618,7 @@ def menu():
         clear_terminal()
         print(Fore.MAGENTA + text_art)
         S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-        x = S.center(135)
+        x = S.center(150)
         print(x)
         print("")
         print("")
@@ -560,12 +639,16 @@ def menu():
 
         if choice == '1':
             clear_terminal()
+            config = check_server_path()
             while True:
                 print(Fore.MAGENTA + text_art)
                 S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-                x = S.center(135)
+                x = S.center(150)
                 print(x)
                 print("")
+                print("")
+                print(f"{Fore.CYAN}Paper Directory: {Fore.GREEN}{config['server_path'] or Fore.RED + 'NONE'}")
+                print(f"{Fore.CYAN}Current Version: {Fore.GREEN}{get_current_version(server_path = config['server_path']) or Fore.RED + 'NOT FOUND'}")
                 print("")
                 print("")
                 print(Fore.CYAN + "Choose a start option:")
