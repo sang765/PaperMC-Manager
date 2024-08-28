@@ -4,9 +4,3 @@ plyer
 re
 uuid
 wmi
-requests
-os
-ctypes
-sys
-subprocess
-platform
