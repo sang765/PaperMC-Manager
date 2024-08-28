@@ -1,6 +1,5 @@
 requests
 colorama
 plyer
-re
 uuid
 wmi
