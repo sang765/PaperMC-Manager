@@ -400,13 +400,38 @@ def add_indent(text, indent_length):
         return '\n'.join([first_line] + rest_lines)
     return text
 
+def select_folder():
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    folder_path = filedialog.askdirectory(title="Select Server Folder")
+    return folder_path
+
 def change_paper_version():
+    def validate_server_path():
+        server_path = config.get('server_path', "")
+        if not server_path or not os.path.exists(server_path):
+            print(Fore.RED + "Server path is not set or invalid.")
+            print(Fore.CYAN + "Please select the folder where your PaperMC server is located.")
+            new_path = select_folder()  # Mở hộp thoại chọn thư mục
+            if new_path and os.path.exists(new_path):
+                config['server_path'] = new_path
+                save_config(config)  # Lưu cấu hình mới
+                print(Fore.GREEN + f"Server path updated to: {new_path}")
+                return new_path
+            else:
+                print(Fore.RED + "No valid folder selected. Returning to main menu.")
+                return None
+        return server_path
+
     clear_terminal()
     versions = get_versions()
     if not versions:
         return
-    
-    server_path = config['server_path']
+
+    server_path = validate_server_path()
+    if not server_path:
+        return
 
     clear_terminal()
     print(Fore.MAGENTA + text_art)
@@ -422,10 +447,12 @@ def change_paper_version():
 
     try:
         choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Minecraft version" + Fore.RED + " '0 = Back to main menu'" + Fore.WHITE + ": " + Fore.YELLOW))
+        if choice == 0:
+            return  # Trở về menu chính
         if choice < 1 or choice > len(versions):
             print(Fore.RED + "Invalid choice.")
             return
-        
+
         clear_terminal()
         selected_version = versions[choice - 1]
         builds = get_builds_for_version(selected_version)
@@ -444,13 +471,13 @@ def change_paper_version():
         print(Fore.CYAN + "Available builds:")
         print("Please wait a moment for the changelog to be fetched...")
         print("")
-        
+
         build_summaries = []
         for build in builds:
             build_number = build['build']
             message = get_changelog_for_build(selected_version, build_number)
             build_summaries.append((build, message))
-            
+
         for idx, (build, message) in enumerate(build_summaries, 1):
             build_number = build['build']
             print(Fore.YELLOW + f"{idx}. " + Fore.GREEN + f"Paper Build " + Fore.CYAN + f"{build_number}")
@@ -461,15 +488,17 @@ def change_paper_version():
                 print(Fore.YELLOW + "    - Changelog: " + GRAY + ITALIC + "No changes" + RESET)
 
         choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Paper build" + Fore.RED + " '0 = Back to main menu'" + Fore.WHITE + ": " + Fore.YELLOW))
+        if choice == 0:
+            return  # Trở về menu chính
         if choice < 1 or choice > len(build_summaries):
             print(Fore.RED + "Invalid choice.")
             return
-        
+
         selected_build, message = build_summaries[choice - 1]
         build_number = selected_build['build']
         file_name = f"paper-{selected_version}-{build_number}.jar"
         download_url = download_url_template.format(version=selected_version, build_number=build_number, file_name=file_name)
-        
+
         clear_terminal()
         print(Fore.MAGENTA + text_art)
         S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
@@ -477,7 +506,7 @@ def change_paper_version():
         print(x)
         print("")
         print("")
-        
+
         if message:
             print(Fore.CYAN + "Changelog for build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + ":")
             indented_message = add_indent(message.strip(), 0)
@@ -485,18 +514,18 @@ def change_paper_version():
         else:
             print(Fore.CYAN + "Changelog for build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + ":")
             print(GRAY + ITALIC + "No changes")
-        
+
         print("")
         print("")
         print(Fore.CYAN + f"Do you want to download build " + Fore.GREEN + f"{build_number}" + Fore.CYAN + f" for Minecraft version" + Fore.GREEN + f" {selected_version}" + Fore.CYAN + f"? (" + Fore.GREEN + "yes" + Fore.CYAN + "/" + Fore.RED + "no" + Fore.CYAN + ")")
         user_input = input().strip().lower()
-        
+
         if user_input in ['yes', 'y']:
             current_version = get_current_version(server_path)
             if current_version:
                 print(Fore.YELLOW + f"Deleting old version: " + Fore.RED + f"{current_version}")
                 delete_old_version(current_version)
-            
+
             print(Fore.BLUE + f"Downloading selected version:" + Fore.GREEN + f" {file_name}")
             download_latest_version(download_url, file_name, server_path)
             print(Fore.GREEN + f"Version updated to:" + Fore.YELLOW + f" {file_name}")
@@ -506,6 +535,7 @@ def change_paper_version():
             print(Fore.YELLOW + "Update skipped. Returning to menu.")
     except ValueError:
         print(Fore.RED + "Invalid input. Please enter a number.")
+
 
 def get_changelog_for_build(version, build_number):
     """
