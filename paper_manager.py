@@ -48,21 +48,21 @@ def check_papermc_folder(folder_path):
         if match:
             return True
     return False
-
+    
 def load_config():
     try:
         with open('server_config.json', 'r') as f:
             content = f.read()
             if not content:
-                print("File server_config.json trống")
+                print("File server_config.json empty")
                 return {}
             config = json.loads(content)
             return config
     except FileNotFoundError:
-        print("File server_config.json không tồn tại")
+        print("File server_config.json not found")
         return {}
     except json.JSONDecodeError as e:
-        print("File server_config.json không đúng định dạng JSON: ", str(e))
+        print("File server_config.json not JSON format: ", str(e))
         return {}
 
 def save_config(config):
