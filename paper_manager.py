@@ -705,7 +705,6 @@ def menu():
 
         if choice == '1':
             clear_terminal()
-            version = get_current_version()
             config = check_server_path()
             while True:
                 print(Fore.MAGENTA + text_art)
