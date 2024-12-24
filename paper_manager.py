@@ -7,9 +7,7 @@ import json
 import signal
 import ctypes
 import platform
-import threading
 import sys
-import threading
 import tkinter as tk
 from tkinter import filedialog
 from colorama import Fore
@@ -22,6 +20,7 @@ folder_path = "./"
 projects_url = "https://api.papermc.io/v2/projects/paper"
 builds_url_template = f"https://api.papermc.io/v2/projects/paper/versions/{{version}}/builds"
 download_url_template = "https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build_number}/downloads/{file_name}"
+current_jdk_runtime = "Unknown"
 
 config_file = "server_config.json"
 GRAY = '\033[1;30m'
@@ -48,7 +47,7 @@ def check_papermc_folder(folder_path):
         if match:
             return True
     return False
-    
+
 def load_config():
     try:
         with open('server_config.json', 'r') as f:
@@ -116,13 +115,28 @@ def get_builds_for_version(version):
         print(Fore.RED + f"Failed to fetch builds. Error: {e}")
         return []
 
-def get_current_version(server_path):
-    for file in os.listdir(config['server_path']):
-        if file.endswith('.jar'):
-            match = re.match(r'paper-(\d+(?:\.\d+){1,2})-(\d+)\.jar', file)
-            if match:
-                return file
-    return None
+def get_current_version(server_path=None):
+    import os
+
+    if not server_path or not os.path.exists(server_path):
+        return None
+    
+    files = os.listdir(server_path)
+    paper_files = [file for file in files if file.startswith("paper-") and file.endswith(".jar")]
+
+    if not paper_files:
+        return None
+
+    latest_file = max(paper_files, key=lambda f: os.path.getmtime(os.path.join(server_path, f)))
+
+    try:
+        parts = latest_file.split('-')
+        mc_version = parts[1]
+        build = parts[2].replace(".jar", "")
+
+        return f"Paper build " + Fore.YELLOW + f"{build}" + Fore.GREEN + f" of Minecraft " + Fore.YELLOW + f"{mc_version}" + Fore.GREEN + f" (" + Fore.BLUE + f"{latest_file}" + Fore.GREEN + f")"
+    except IndexError:
+        return f"Unknown version ({latest_file})"
 
 def delete_old_version(file_name):
     os.remove(os.path.join(folder_path, file_name))
@@ -291,6 +305,107 @@ def start_server_loop():
     else:
         print("Server path not set. Please configure config")
 
+def list_installed_jdks():
+    jdks = []
+
+    java_home = os.getenv("JAVA_HOME")
+    if java_home and os.path.isdir(java_home):
+        jdks.append((java_home, "JAVA_HOME"))
+
+    if platform.system() == "Linux" or platform.system() == "Darwin":
+        common_paths = ["/usr/lib/jvm", "/Library/Java/JavaVirtualMachines"]
+        for path in common_paths:
+            if os.path.exists(path):
+                for jdk_dir in os.listdir(path):
+                    full_path = os.path.join(path, jdk_dir)
+                    if os.path.isdir(full_path) and ("jdk" in jdk_dir.lower() or "java" in jdk_dir.lower()):
+                        jdks.append((full_path, jdk_dir))
+    elif platform.system() == "Windows":
+        common_paths = [
+            "C:\\Program Files\\Java",
+            "C:\\Program Files (x86)\\Java",
+            "C:\\Program Files\\Eclipse Adoptium",
+            "C:\\Program Files\\Amazon Corretto",
+            "C:\\Program Files\\Zulu",
+            "C:\\Program Files\\RedHat"
+        ]
+        for path in common_paths:
+            if os.path.exists(path):
+                for jdk_dir in os.listdir(path):
+                    full_path = os.path.join(path, jdk_dir)
+                    if os.path.isdir(full_path) and "jdk" in jdk_dir.lower():
+                        jdks.append((full_path, jdk_dir))
+        
+        try:
+            import winreg
+            reg_path = r"SOFTWARE\JavaSoft\Java Development Kit"
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path) as key:
+                    i = 0
+                    while True:
+                        try:
+                            version = winreg.EnumKey(key, i)
+                            subkey_path = os.path.join(reg_path, version)
+                            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, subkey_path) as subkey:
+                                path, _ = winreg.QueryValueEx(subkey, "JavaHome")
+                                if os.path.isdir(path):
+                                    jdks.append((path, f"Registry: {version}"))
+                            i += 1
+                        except OSError:
+                            break
+            except FileNotFoundError:
+                print("Registry key for Java Development Kit not found.")
+        except ImportError:
+            pass
+
+    try:
+        result = subprocess.run(["java", "-version"], capture_output=True, text=True)
+        if result.returncode == 0:
+            output = result.stderr.splitlines()[0]
+            jdks.append(("java in PATH", output))
+    except FileNotFoundError:
+        pass
+
+    jdks = list(dict.fromkeys(jdks))
+
+    return jdks
+
+def change_jdk_runtime():
+    global current_jdk_runtime
+    jdks = list_installed_jdks()
+    if not jdks:
+        print("No JDK runtimes found.")
+        input("Press Enter to go back...")
+        return
+
+    print("Available JDK runtimes:")
+    for idx, (name, path) in enumerate(jdks.items(), start=1):
+        print(f"{idx}. {name} ({path})")
+    print("0. Cancel and go back")
+
+    choice = input("Select a JDK runtime: ").strip()
+    if choice == "0":
+        clear_terminal()
+        return
+
+    try:
+        selected_idx = int(choice) - 1
+        if selected_idx < 0 or selected_idx >= len(jdks):
+            print("Invalid selection. Try again.")
+            return change_jdk_runtime()
+
+        selected_name, selected_path = list(jdks.items())[selected_idx]
+        os.environ["JAVA_HOME"] = selected_path
+        current_jdk_runtime = f"{selected_name} ({selected_path})"
+        print(f"JDK runtime switched to: {selected_path}")
+        input("Press Enter to return to the menu...")
+
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+        return change_jdk_runtime()
+
+print(f"JDK Runtime: {current_jdk_runtime}")
+
 def check_server_path():
     config = load_config()
     server_path = config.get('server_path', '')
@@ -413,10 +528,10 @@ def change_paper_version():
         if not server_path or not os.path.exists(server_path):
             print(Fore.RED + "Server path is not set or invalid.")
             print(Fore.CYAN + "Please select the folder where your PaperMC server is located.")
-            new_path = select_folder()  # Mở hộp thoại chọn thư mục
+            new_path = select_folder()
             if new_path and os.path.exists(new_path):
                 config['server_path'] = new_path
-                save_config(config)  # Lưu cấu hình mới
+                save_config(config)
                 print(Fore.GREEN + f"Server path updated to: {new_path}")
                 return new_path
             else:
@@ -448,7 +563,7 @@ def change_paper_version():
     try:
         choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Minecraft version" + Fore.RED + " '0 = Back to main menu'" + Fore.WHITE + ": " + Fore.YELLOW))
         if choice == 0:
-            return  # Trở về menu chính
+            return
         if choice < 1 or choice > len(versions):
             print(Fore.RED + "Invalid choice.")
             return
@@ -489,7 +604,7 @@ def change_paper_version():
 
         choice = int(input(Fore.WHITE + "Type " + Fore.YELLOW + "'yellow'" + Fore.WHITE + " number to select Paper build" + Fore.RED + " '0 = Back to main menu'" + Fore.WHITE + ": " + Fore.YELLOW))
         if choice == 0:
-            return  # Trở về menu chính
+            return
         if choice < 1 or choice > len(build_summaries):
             print(Fore.RED + "Invalid choice.")
             return
@@ -536,6 +651,45 @@ def change_paper_version():
     except ValueError:
         print(Fore.RED + "Invalid input. Please enter a number.")
 
+def get_jdk_version():
+    import subprocess
+
+    try:
+        result = subprocess.run(["java", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        output = result.stderr
+
+        if "Amazon Corretto" in output:
+            runtime = "Amazon Corretto"
+        elif "Zulu" in output:
+            runtime = "Azul Zulu"
+        elif "Temurin" in output:
+            runtime = "Eclipse Adoptium's Temurin"
+        elif "IBM Semeru" in output:
+            runtime = "IBM Semeru Runtimes"
+        elif "Microsoft" in output:
+            runtime = "Microsoft Build of OpenJDK"
+        elif "GraalVM" in output:
+            runtime = "Oracle GraalVM"
+        elif "Oracle" in output:
+            runtime = "Oracle Java SE"
+        elif "Red Hat" in output:
+            runtime = "Red Hat build of OpenJDK"
+        elif "SapMachine" in output:
+            runtime = "SapMachine"
+        elif "OpenJDK" in output:
+            runtime = "OpenJDK"
+        else:
+            runtime = "Unknown JDK"
+
+        version_line = next((line for line in output.splitlines() if "version" in line), None)
+        if version_line:
+            version = version_line.split('"')[1]
+        else:
+            version = "Unknown Version"
+
+        return f"{runtime} {version}"
+    except Exception as e:
+        return f"Unable to detect JDK version: {e}"
 
 def get_changelog_for_build(version, build_number):
     """
@@ -678,7 +832,10 @@ def menu():
                 print("")
                 print("")
                 print(f"{Fore.CYAN}Paper Directory: {Fore.GREEN}{config['server_path'] or Fore.RED + 'NONE'}")
-                print(f"{Fore.CYAN}Current Version: {Fore.GREEN}{get_current_version(server_path = config['server_path']) or Fore.RED + 'NOT FOUND'}")
+                current_version = get_current_version(server_path=config['server_path'])
+                jdk_version = get_jdk_version()
+                print(f"{Fore.CYAN}Current Version: {Fore.GREEN}{current_version or Fore.RED + 'NOT FOUND'}")
+                print(f"{Fore.CYAN}JDK Runtime: {Fore.GREEN}{jdk_version or Fore.RED + 'NOT FOUND'}")
                 print("")
                 print("")
                 print(Fore.CYAN + "Choose a start option:")
@@ -724,7 +881,7 @@ def menu():
             clear_terminal()
             reload_script()
         elif choice == '6':
-            on_exit()  # Call on_exit to handle active processes before quitting
+            on_exit()
             clear_terminal()
             print(Fore.MAGENTA + "Thank you for using this script. If you like this script don't forgot leave a star on " + GRAY + "GitHub" + RESET + Fore.MAGENTA + " page: " + GRAY + BOLD + "\nhttps://github.com/sang765/PaperMC-Manager" + RESET + Fore.MAGENTA + "\nGoodbye and have a nice day!")
             time.sleep(5)
