@@ -119,13 +119,13 @@ def get_current_version(server_path=None):
     import os
 
     if not server_path or not os.path.exists(server_path):
-        return None
+        return None, None
     
     files = os.listdir(server_path)
     paper_files = [file for file in files if file.startswith("paper-") and file.endswith(".jar")]
 
     if not paper_files:
-        return None
+        return None, None
 
     latest_file = max(paper_files, key=lambda f: os.path.getmtime(os.path.join(server_path, f)))
 
@@ -134,9 +134,14 @@ def get_current_version(server_path=None):
         mc_version = parts[1]
         build = parts[2].replace(".jar", "")
 
-        return f"Paper build " + Fore.YELLOW + f"{build}" + Fore.GREEN + f" of Minecraft " + Fore.YELLOW + f"{mc_version}" + Fore.GREEN + f" (" + Fore.BLUE + f"{latest_file}" + Fore.GREEN + f")"
+        description = (
+            f"Paper build " + Fore.YELLOW + f"{build}" + Fore.GREEN +
+            f" of Minecraft " + Fore.YELLOW + f"{mc_version}" + Fore.GREEN +
+            f" (" + Fore.BLUE + f"{latest_file}" + Fore.GREEN + f")"
+        )
+        return latest_file, description
     except IndexError:
-        return f"Unknown version ({latest_file})"
+        return latest_file, f"Unknown version ({latest_file})"
 
 def delete_old_version(file_name):
     os.remove(os.path.join(folder_path, file_name))
@@ -242,31 +247,33 @@ def start_server_no_loop():
     server_path = config['server_path']
     project_dir = os.getcwd()
     server_path_abs = os.path.join(project_dir, server_path)
-    current_version = get_current_version(server_path)
+    jar_name, description = get_current_version(server_path)
 
     if server_path:
         if config.get("auto_update", False):
             check_for_update_auto_mode()
-        if current_version:
-            jar_file = os.path.join(server_path_abs, current_version)
+        if jar_name:
+            jar_file = os.path.join(server_path_abs, jar_name)
+            print(f"Checking file: {jar_file}")  # Debugging line
             if os.path.exists(jar_file):
                 print(Fore.GREEN + f"=================== STARTING SERVER ==================")
-                print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+                print(Fore.GREEN + f"Starting server with: " + description)
                 print(Fore.GREEN + f"======================================================")
                 server_process = run_server(jar_file)
                 server_process.wait()
-                print(Fore.RED + f"====================== SERVER STOPED =====================")
-                print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+                print(Fore.RED + f"====================== SERVER STOPPED =====================")
+                print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATED FIRST TIME. SERVER AUTOMATIC STOPPED.")
                 print(Fore.RED + f"==========================================================")
                 print(Fore.YELLOW + "Back to menu...")
                 time.sleep(1)
                 menu()
             else:
-                print(Fore.YELLOW + f"File jar {current_version} does not exist at path {server_path_abs}")
+                print(Fore.YELLOW + f"File jar {jar_name} does not exist at path {server_path_abs}")
         else:
             print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
     else:
         print("Server path not set. Please configure config")
+
 
 def start_server_loop():
     clear_terminal()
@@ -274,30 +281,30 @@ def start_server_loop():
     server_path = config['server_path']
     project_dir = os.getcwd()
     server_path_abs = os.path.join(project_dir, server_path)
-    current_version = get_current_version(server_path)
 
     if server_path:
         while True:
-            current_version = get_current_version(server_path)
+            jar_name, description = get_current_version(server_path)
             if config.get("auto_update", False):
                 check_for_update_auto_mode()
-            if current_version:
-                jar_file = os.path.join(server_path_abs, current_version)
+            if jar_name:
+                jar_file = os.path.join(server_path_abs, jar_name)
+                print(f"Checking file: {jar_file}")  # Debugging line
                 if os.path.exists(jar_file):
                     print(Fore.GREEN + f"=================== STARTING SERVER ==================")
-                    print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+                    print(Fore.GREEN + f"Starting server with: " + description)
                     print(Fore.GREEN + f"======================================================")
                     server_process = run_server(jar_file)
                     server_process.wait()
-                    print(Fore.RED + f"====================== SERVER STOPED =====================")
+                    print(Fore.RED + f"====================== SERVER STOPPED =====================")
                     print(Fore.RED + "Server has stopped. Click " + Fore.GREEN + "\"Ctrl + C\"" + Fore.RED + " in 5 seconds to go back" + Fore.YELLOW + " to main menu.")
-                    print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+                    print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATED FIRST TIME. SERVER AUTOMATIC STOPPED.")
                     print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
                     print(Fore.RED + f"==========================================================")
                     print()
                     time.sleep(5)
                 else:
-                    print(Fore.YELLOW + f"File jar {current_version} does not exist at path {server_path_abs}")
+                    print(Fore.YELLOW + f"File jar {jar_name} does not exist at path {server_path_abs}")
                     break
             else:
                 print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
@@ -431,7 +438,8 @@ def check_server_path():
 
 def check_for_update_auto_mode():
     print(Fore.CYAN + "Checking for updates...")
-    current_version = get_current_version(config['server_path'])
+    current_version, _ = get_current_version(config['server_path'])
+
     if current_version:
         current_version_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', current_version) or re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', current_version)
         if current_version_match:
@@ -801,57 +809,48 @@ def menu():
     while True:
         clear_terminal()
         print(Fore.MAGENTA + text_art)
-        S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-        x = S.center(150)
-        print(x)
-        print("")
-        print("")
-        print("OPTIONS:")
-        S = (Fore.YELLOW + "1. Start Minecraft Server\n" +
-             Fore.LIGHTGREEN_EX + "2. Check for Update Your Paper Build\n" +
-             Fore.LIGHTRED_EX + "3. Change Paper Version\n" +
-             Fore.CYAN + "4. Configure Server Settings\n" +
-             Fore.LIGHTCYAN_EX + "5. Reload Script (Sync from GitHub raw)\n" +
-             Fore.RED + "6. Quit")
-        x = S.center(0)
-        print(x)
-        S = "====="
-        x = S.center(60)
-        print(x)
+        header = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
+        print(header.center(150))
+        print("\n\nOPTIONS:")
+        options = (
+            Fore.YELLOW + "1. Start Minecraft Server\n" +
+            Fore.LIGHTGREEN_EX + "2. Check for Update Your Paper Build\n" +
+            Fore.LIGHTRED_EX + "3. Change Paper Version\n" +
+            Fore.CYAN + "4. Configure Server Settings\n" +
+            Fore.LIGHTCYAN_EX + "5. Reload Script (Sync from GitHub raw)\n" +
+            Fore.RED + "6. Quit"
+        )
+        print(options.center(0))
+        print("=====".center(60))
         
         choice = input("Select an option: ").strip()
 
         if choice == '1':
-            clear_terminal()
             config = check_server_path()
+            server_path = config.get('server_path', None)
+            if not server_path:
+                print(Fore.RED + "Server path not found. Please configure server settings first.")
+                time.sleep(2)
+                continue
+
             while True:
+                clear_terminal()
                 print(Fore.MAGENTA + text_art)
-                S = (Fore.RED + "<===== " + Fore.CYAN + "by " + Fore.GREEN + "sang765 " + Fore.YELLOW + "on " + Fore.WHITE + "GitHub" + Fore.RED + " ======>")
-                x = S.center(150)
-                print(x)
-                print("")
-                print("")
-                print(f"{Fore.CYAN}Paper Directory: {Fore.GREEN}{config['server_path'] or Fore.RED + 'NONE'}")
-                current_version = get_current_version(server_path=config['server_path'])
+                print(header.center(150))
+                print("\n\n")
+                print(f"{Fore.CYAN}Paper Directory: {Fore.GREEN}{server_path or Fore.RED + 'NONE'}")
                 jdk_version = get_jdk_version()
-                print(f"{Fore.CYAN}Current Version: {Fore.GREEN}{current_version or Fore.RED + 'NOT FOUND'}")
+                jar_name, description = get_current_version(server_path)
+                print(f"{Fore.CYAN}Current Version: {Fore.GREEN}{description or Fore.RED + 'NOT FOUND'}")
                 print(f"{Fore.CYAN}JDK Runtime: {Fore.GREEN}{jdk_version or Fore.RED + 'NOT FOUND'}")
-                print("")
-                print("")
-                print(Fore.CYAN + "Choose a start option:")
+                print("\n\nChoose a start option:")
                 print(Fore.YELLOW + "1. Start (Without Restart)")
                 print(Fore.GREEN + "2. Start (Auto Restart)")
                 print(f"3. Auto Update Paper: {Fore.GREEN + 'Enabled' if config.get('auto_update', False) else Fore.RED + 'Disabled'}")
                 print(Fore.CYAN + "4. Go Back")
-                S = "====="
-                x = S.center(60)
-                print(x)
+                print("=====".center(60))
                 
                 sub_choice = input("Select an option: ").strip()
-
-                S = "====="
-                x = S.center(60)
-                print(x)
 
                 if sub_choice == '1':
                     clear_terminal()
@@ -860,14 +859,16 @@ def menu():
                     clear_terminal()
                     start_server_loop()
                 elif sub_choice == '3':
-                    clear_terminal()
                     config["auto_update"] = not config.get("auto_update", False)
                     print(f"Auto Update is now {'Enabled' if config['auto_update'] else 'Disabled'}.")
                     save_config(config)
+                    time.sleep(2)
                 elif sub_choice == '4':
                     break
                 else:
                     print(Fore.RED + "Invalid option. Please select a valid option.")
+                    time.sleep(2)
+
         elif choice == '2':
             clear_terminal()
             check_for_update()
@@ -883,11 +884,12 @@ def menu():
         elif choice == '6':
             on_exit()
             clear_terminal()
-            print(Fore.MAGENTA + "Thank you for using this script. If you like this script don't forgot leave a star on " + GRAY + "GitHub" + RESET + Fore.MAGENTA + " page: " + GRAY + BOLD + "\nhttps://github.com/sang765/PaperMC-Manager" + RESET + Fore.MAGENTA + "\nGoodbye and have a nice day!")
+            print(Fore.MAGENTA + "Thank you for using this script. If you like this script, don't forget to leave a star on " + Fore.WHITE + "GitHub" + Fore.MAGENTA + " page:\nhttps://github.com/sang765/PaperMC-Manager\nGoodbye and have a nice day!")
             time.sleep(5)
             sys.exit()
         else:
             print(Fore.RED + "Invalid option. Please try again.")
+            time.sleep(2)
 
 
 if __name__ == "__main__":
