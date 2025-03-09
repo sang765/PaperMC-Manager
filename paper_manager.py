@@ -9,9 +9,7 @@ import platform
 import sys
 import tkinter as tk
 from tkinter import filedialog
-from colorama import Fore
-from threading import Timer, Thread
-from colorama import init, Fore, Style
+from colorama import Fore, init, Style
 
 init(autoreset=True)
 
@@ -19,6 +17,8 @@ folder_path = "./"
 projects_url = "https://api.papermc.io/v2/projects/paper"
 builds_url_template = f"https://api.papermc.io/v2/projects/paper/versions/{{version}}/builds"
 download_url_template = "https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build_number}/downloads/{file_name}"
+
+CHANGELOG_URL = "https://raw.githubusercontent.com/sang765/PaperMC-Manager/refs/heads/main/changelogs/CHANGELOG.md"
 
 config_file = "server_config.json"
 GRAY = '\033[1;30m'
@@ -32,6 +32,74 @@ default_config = {
     "auto_update": False,
     "server_path": ""
 }
+
+def merge_changelogs():
+    os.makedirs(CHANGELOG_DIR, exist_ok=True)
+    changelog_files = glob.glob(os.path.join(CHANGELOG_DIR, "changelog_v*.md"))
+    changelog_files.sort(reverse=True)
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as outfile:
+        outfile.write("# Changelog\n\n")
+        outfile.write("All notable changes to this project will be documented in this file.\n\n")
+        if not changelog_files:
+            outfile.write("No changelog entries yet.\n")
+            print("No changelog files found.")
+            return
+        for file in changelog_files:
+            with open(file, "r", encoding="utf-8") as infile:
+                outfile.write(infile.read())
+                outfile.write("\n\n")
+    
+    print(f"Updated {OUTPUT_FILE}")
+
+def get_latest_changelog_from_github():
+    """Tải CHANGELOG.md từ GitHub và lấy phần changelog mới nhất với màu sắc"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(CHANGELOG_URL, timeout=5)
+            if response.status_code == 200:
+                content = response.text.splitlines()
+                latest_section = []
+                in_latest_section = False
+                
+                for line in content:
+                    if line.startswith("## [") and not line.startswith("## [Unreleased]"):
+                        if in_latest_section:
+                            break
+                        in_latest_section = True
+                    if in_latest_section and line.strip():
+                        latest_section.append(line)
+                
+                if not latest_section:
+                    return Fore.YELLOW + "No changelog entries found in CHANGELOG.md yet."
+                
+                colored_content = []
+                for line in latest_section:
+                    if line.startswith("## ["):
+                        colored_content.append(f"{Fore.CYAN}{line}{Style.RESET_ALL}")
+                    elif line.startswith("### Added"):
+                        colored_content.append(f"{Fore.GREEN}{line}{Style.RESET_ALL}")
+                    elif line.startswith("### Changed"):
+                        colored_content.append(f"{Fore.YELLOW}{line}{Style.RESET_ALL}")
+                    elif line.startswith("### Removed"):
+                        colored_content.append(f"{Fore.RED}{line}{Style.RESET_ALL}")
+                    elif line.strip().startswith("-"):
+                        colored_content.append(f"{Fore.WHITE}{line}{Style.RESET_ALL}")
+                    else:
+                        colored_content.append(f"{Fore.MAGENTA}{line}{Style.RESET_ALL}")
+                
+                return "\n".join(colored_content)
+            elif response.status_code == 404:
+                return Fore.YELLOW + "CHANGELOG.md not found on GitHub. Please create it in the repository."
+            else:
+                return Fore.RED + f"Failed to fetch CHANGELOG.md (HTTP {response.status_code})."
+        
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return Fore.RED + f"Error fetching changelog after {max_retries} attempts: {e}"
 
 def select_server_folder():
     root = tk.Tk()
@@ -79,7 +147,6 @@ text_art = """
 """
 
 def clear_terminal():
-    """Clear terminal content."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def get_versions():
@@ -319,28 +386,24 @@ def check_for_update_auto_mode():
         if current_version_match:
             current_version_number = current_version_match.group(1)
             current_build_number = int(current_version_match.group(2))
-            download_url, file_name = get_latest_version_url(current_version_number)
+            version, build_number, file_name = get_latest_version_url(current_version_number)
 
-            if download_url:
-                latest_build_match = re.match(r'paper-(\d+\.\d+)-(\d+)\.jar', file_name) or re.match(r'paper-(\d+\.\d+\.\d+)-(\d+)\.jar', file_name)
-                if latest_build_match:
-                    latest_build_number = int(latest_build_match.group(2))
+            if version:
+                latest_build_number = build_number
 
-                    if latest_build_number > current_build_number:
-                        print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
-                        delete_old_version(current_version)
-                        download_latest_version(download_url, file_name)
-                        get_changelog_for_build(current_version_number, latest_build_number)
-                    else:
-                        print(Fore.GREEN + "You are already using the latest version.")
+                if latest_build_number > current_build_number:
+                    print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
+                    delete_old_version(current_version)
+                    download_latest_version(download_url_template.format(version=version, build_number=build_number, file_name=file_name), file_name)
+                    get_changelog_for_build(version, latest_build_number)
                 else:
-                    print(Fore.RED + "Failed to parse the latest version file name.")
+                    print(Fore.GREEN + "You are already using the latest version.")
             else:
                 print(Fore.RED + "Failed to fetch the latest version URL.")
     else:
         print(Fore.YELLOW + "No current version found, nothing to update.")
 
-def download_latest_version(download_url, file_name, server_path):
+def download_latest_version(download_url, file_name):
     print(f"Downloading latest version from {download_url}...")
     response = requests.get(download_url)
     with open(os.path.join(config['server_path'], file_name), 'wb') as f:
@@ -354,11 +417,11 @@ def check_for_update():
         return
     
     minecraft_version = versions[-1]
-    latest_version_url, latest_version_file = get_latest_version_url(minecraft_version)
-    if not latest_version_url:
+    version, build_number, latest_version_file = get_latest_version_url(minecraft_version)
+    if not version:
         return
     
-    current_version = get_current_version(server_path = config['server_path'])
+    current_version = get_current_version(server_path=config['server_path'])
     
     if current_version == latest_version_file:
         print(Fore.GREEN + "====================================")
@@ -380,7 +443,7 @@ def check_for_update():
 
         print(Fore.BLUE + f"Downloading latest version: " + Fore.MAGENTA + f"{latest_version_file}")
         print(Fore.GREEN + "====================================")
-        download_latest_version(latest_version_url, os.path.join(config['server_path'], latest_version_file))
+        download_latest_version(download_url_template.format(version=version, build_number=build_number, file_name=latest_version_file), latest_version_file)
         clear_terminal()
     else:
         print(Fore.YELLOW + "====================================")
@@ -523,7 +586,7 @@ def change_paper_version():
                 delete_old_version(current_version)
 
             print(Fore.BLUE + f"Downloading selected version:" + Fore.GREEN + f" {file_name}")
-            download_latest_version(download_url, file_name, server_path)
+            download_latest_version(download_url, file_name)
             print(Fore.GREEN + f"Version updated to:" + Fore.YELLOW + f" {file_name}")
             clear_terminal()
         else:
@@ -532,11 +595,7 @@ def change_paper_version():
     except ValueError:
         print(Fore.RED + "Invalid input. Please enter a number.")
 
-
 def get_changelog_for_build(version, build_number):
-    """
-    Get changelog for the specified version and build number.
-    """
     changelog_url = f"https://papermc.io/api/v2/projects/paper/versions/{version}/builds/{build_number}"
     try:
         response = requests.get(changelog_url)
@@ -558,19 +617,16 @@ def reload_script():
     print("")
     print(Fore.CYAN + "Reloading script from GitHub...")
 
-    script_url = "https://raw.githubusercontent.com/sang765/Paper-Manager/main/paper_manager.py"
+    script_url = "https://raw.githubusercontent.com/sang765/PaperMC-Manager/main/paper_manager.py"
     try:
         response = requests.get(script_url)
-        response.raise_for_status()  # Check for HTTP errors
+        response.raise_for_status()
 
-        # Write the content to the current script file
-        script_path = __file__  # Path to the current script
+        script_path = __file__
         with open(script_path, "w") as f:
             f.write(response.text)
         
         print(Fore.GREEN + "Script reloaded successfully.")
-        
-        # Optional: Restart the script after reloading
         print(Fore.CYAN + "Restarting the script...")
         os.execv(sys.executable, ['python'] + [script_path])
     
@@ -631,8 +687,6 @@ def configure_server():
             print(Fore.RED + "Invalid option. Please try again.")
 
 def get_jdk_version():
-    import subprocess
-
     try:
         result = subprocess.run(["java", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         output = result.stderr
@@ -671,9 +725,8 @@ def get_jdk_version():
         return f"Unable to detect JDK version: {e}"
 
 def on_exit():
-    """Check and handle active processes before exiting."""
     global active_processes
-    if any(proc.poll() is None for proc in active_processes):  # Check if any process is running
+    if any(proc.poll() is None for proc in active_processes):
         print(Fore.RED + "Detected active processes. Exiting gracefully...")
 
 def menu():
@@ -700,6 +753,11 @@ def menu():
         S = "====="
         x = S.center(60)
         print(x)
+        
+        print(f"\n{Fore.CYAN}Latest Changelog:")
+        print(Fore.WHITE + "-" * 50)
+        print(get_latest_changelog_from_github())
+        print(Fore.WHITE + "-" * 50)
         
         choice = input("Select an option: ").strip()
 
@@ -769,7 +827,6 @@ def menu():
             sys.exit()
         else:
             print(Fore.RED + "Invalid option. Please try again.")
-
 
 if __name__ == "__main__":
     menu()
