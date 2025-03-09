@@ -91,17 +91,6 @@ VSCode Preview:
    python paper_manager.py
    ```
 
-### Executable Installation
-1. **Download the EXE Version:**
-
-   - If you prefer not to use Python, you can download a pre-built EXE version from the project's release page or provided link.
-2. **Run the EXE Version:**
-
-   - Run the EXE file by double-clicking it or executing it from the command line.
-
 ## Note 
 - This script is not affiliated with PaperMC team.
-- If you see **PaperMC_Manager.exe** or **main.exe** of PaperMC Manager got malicious on [this](https://www.virustotal.com/gui/file/893fd96c0879418d6b7e75a2c88aafe48b70214e29e335388b619279101e6570)? Don't worry this executable **100% safe**. The reason this executable got malicious on VirusTotal because I use **pyinstall with UPX**.
 - If you run this script on VSCode, remember install **[Path Intellisense](https://marketplace.visualstudio.com/items?itemName=christian-kohler.path-intellisense)**  extension to make it work because choose folder feauture not work in VSCode and this extension make that feature it work in VSCode.
-
-![VT Test Image](assets/VT_Test.png)
