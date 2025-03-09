@@ -7,5 +7,5 @@
 - New script logic.
 ### Changed
 - New `start_server` logic for `start_server_loop` and `start_server_no_loop`
-### Remove
+### Removed
 - `server_path` don't needed anymore.
