@@ -10,29 +10,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Update CHANGELOGS.md
+      - name: Ensure changelogs directory exists
+        run: |
+          mkdir -p changelogs
+
+      - name: Update CHANGELOG.md
         run: |
           CHANGELOG_DIR="changelogs"
-          OUTPUT_FILE="$CHANGELOG_DIR/CHANGELOGS.md"
+          OUTPUT_FILE="$CHANGELOG_DIR/CHANGELOG.md"
 
           echo "# Changelog" > "$OUTPUT_FILE"
           echo "" >> "$OUTPUT_FILE"
           echo "All notable changes to this project will be documented in this file." >> "$OUTPUT_FILE"
           echo "" >> "$OUTPUT_FILE"
 
-          for file in $(ls -1v "$CHANGELOG_DIR"/changelog_v*.md | sort -r); do
-            cat "$file" >> "$OUTPUT_FILE"
-            echo "" >> "$OUTPUT_FILE"
+          for file in $(ls -1v "$CHANGELOG_DIR"/changelog_v*.md | sort -r 2>/dev/null || echo ""); do
+            if [ -f "$file" ]; then
+              cat "$file" >> "$OUTPUT_FILE"
+              echo "" >> "$OUTPUT_FILE"
+            else
+              echo "No changelog file."
+            fi
           done
 
-      - name: Commit changes
+      - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add "$CHANGELOG_DIR/CHANGELOGS.md"
-          git commit -m "chore: update CHANGELOGS.md" || echo "Không có thay đổi để commit"
+          git add "changelogs/CHANGELOGS.md"
+          git commit -m "chore: update CHANGELOGS.md" || echo "Nothing to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
