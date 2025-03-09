@@ -7,18 +7,21 @@ import json
 import signal
 import platform
 import sys
+import shutil
+import traceback
+import datetime
 import tkinter as tk
 from tkinter import filedialog
 from colorama import Fore, init, Style
 
 init(autoreset=True)
 
-folder_path = "./"
 projects_url = "https://api.papermc.io/v2/projects/paper"
 builds_url_template = f"https://api.papermc.io/v2/projects/paper/versions/{{version}}/builds"
 download_url_template = "https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build_number}/downloads/{file_name}"
 
 CHANGELOG_URL = "https://raw.githubusercontent.com/sang765/PaperMC-Manager/refs/heads/main/changelogs/CHANGELOG.md"
+ERROR_LOG_FILE = "./logs/error.log"
 
 config_file = "server_config.json"
 GRAY = '\033[1;30m'
@@ -30,7 +33,8 @@ default_config = {
     "ram": "4G",
     "nogui": True,
     "auto_update": False,
-    "server_path": ""
+    "server_path": "",
+    "webhook_url": ""
 }
 
 def get_latest_changelog_from_github():
@@ -129,6 +133,77 @@ text_art = """
 def clear_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def log_error(error_message):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(ERROR_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] {error_message}\n")
+        traceback_str = traceback.format_exc()
+        if traceback_str.strip() != "NoneType: None":
+            f.write(f"Traceback: {traceback_str}\n")
+    print(Fore.RED + f"Error logged: {error_message}")
+
+def read_latest_error():
+    if not os.path.exists(ERROR_LOG_FILE):
+        return "No errors logged yet."
+    with open(ERROR_LOG_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        if not lines:
+            return "No errors logged yet."
+        last_error = []
+        for line in reversed(lines):
+            if line.strip().startswith("["):
+                last_error.append(line)
+                break
+            elif last_error:
+                last_error.append(line)
+        return "".join(reversed(last_error)).strip()
+
+def send_webhook(webhook_url, message, embed_title=None, embed_color=0x00FF00, error_log=None, execution_time=None):
+    if not webhook_url:
+        print(Fore.YELLOW + "❌ Webhook URL not set. Skipping webhook notification.")
+        return
+    
+    data = {
+        "username": "PaperMC Manager",
+        "avatar_url": "https://i.imgur.com/GzfsT2w.png"
+    }
+    
+    if embed_title:
+        embed = {
+            "title": embed_title,
+            "description": message,
+            "color": embed_color,
+            "author": {
+                "name": "PaperMC Manager",
+                "icon_url": "https://i.imgur.com/GzfsT2w.png"
+            },
+            "footer": {
+                "text": f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                "icon_url": "https://github.com/sang765.png"
+            }
+        }
+        if execution_time is not None:
+            embed["footer"]["text"] += f" | Done ({execution_time:.3f}s)"
+        if error_log:
+            embed["fields"] = [{
+                "name": "Error Details",
+                "value": f"```\n{error_log}\n```",
+                "inline": False
+            }]
+        data["embeds"] = [embed]
+    else:
+        data["content"] = message
+    
+    try:
+        response = requests.post(webhook_url, json=data)
+        if response.status_code == 204:
+            print(Fore.GREEN + "✅ Webhook sent successfully.")
+        else:
+            print(Fore.RED + f"❌ Failed to send webhook: HTTP {response.status_code}")
+    except requests.RequestException as e:
+        log_error(f"Error sending webhook: {e}")
+        print(Fore.RED + f"Error sending webhook: {e}")
+
 def get_versions():
     try:
         print(Fore.CYAN + "Fetching available versions...")
@@ -187,7 +262,13 @@ def get_latest_version_url(version):
     print(Fore.GREEN + f"URL fetched successfully: {Fore.YELLOW}{download_url}")
     return version, build_number, file_name
 
-def run_server(file_name):
+def run_server(file_name, server_path_abs):
+    if not shutil.which("java"):
+        error_msg = "Java not found in PATH. Please install Java or add it to your system PATH."
+        log_error(error_msg)
+        send_webhook(config.get("webhook_url"), error_msg, "Server Error", 0xFF0000, read_latest_error())
+        raise FileNotFoundError(error_msg)
+    
     ram = config["ram"]
     nogui_option = "--nogui" if config["nogui"] else ""
     java_flags = [
@@ -219,7 +300,7 @@ def run_server(file_name):
     if nogui_option:
         java_flags.append(nogui_option)
 
-    return subprocess.Popen(['java'] + java_flags, cwd=folder_path)
+    return subprocess.Popen(['java'] + java_flags, cwd=server_path_abs, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 def read_input_with_timeout(prompt, timeout):
     if platform.system() == 'Windows':
@@ -266,6 +347,78 @@ def handle_interrupt(signal, frame):
 
 signal.signal(signal.SIGINT, handle_interrupt)
 
+def start_server(jar_file, server_path_abs, webhook_url):
+    start_time = time.time()
+    current_version = os.path.basename(jar_file)
+    jdk_version = get_jdk_version()
+    
+    send_webhook(webhook_url, 
+                 f"Server starting with {current_version}\nJDK: {jdk_version}", 
+                 "Server Starting", 0x00FF00,
+                 execution_time=time.time() - start_time)
+    print(Fore.GREEN + f"=================== STARTING SERVER ==================")
+    print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
+    print(Fore.GREEN + f"======================================================")
+    
+    try:
+        eula_file = os.path.join(server_path_abs, "eula.txt")
+        if not os.path.exists(eula_file):
+            with open(eula_file, "w") as f:
+                f.write("eula=true")
+            print(Fore.YELLOW + "Created eula.txt with eula=true")
+        else:
+            with open(eula_file, "r") as f:
+                content = f.read()
+                if "eula=false" in content.lower():
+                    with open(eula_file, "w") as f:
+                        f.write("eula=true")
+                    print(Fore.YELLOW + "Changed eula=false to eula=true in eula.txt")
+                elif "eula=true" not in content.lower():
+                    with open(eula_file, "a") as f:
+                        f.write("\neula=true")
+                    print(Fore.YELLOW + "Added eula=true to eula.txt")
+
+        server_process = run_server(jar_file, server_path_abs)
+        
+        while server_process.poll() is None:
+            stdout_line = server_process.stdout.readline().strip()
+            if stdout_line:
+                print(stdout_line)
+                if "Done" in stdout_line and "For help, type" in stdout_line:
+                    send_webhook(webhook_url,
+                                 f"Server {current_version} has finished starting up.",
+                                 "Starting Done", 0x00FFFF,
+                                 execution_time=time.time() - start_time)
+        
+        stderr_output = server_process.stderr.read().strip()
+        if server_process.returncode != 0:
+            error_msg = f"Server stopped with error (return code: {server_process.returncode}).\nStderr:\n{stderr_output}"
+            log_error(error_msg)
+            send_webhook(webhook_url, 
+                         error_msg, 
+                         "Server Error", 0xFF0000, 
+                         read_latest_error(),
+                         execution_time=time.time() - start_time)
+            raise Exception(error_msg)
+        
+        stop_time = time.time()
+        uptime_seconds = stop_time - start_time
+        uptime_str = f"{uptime_seconds:.1f} seconds" if uptime_seconds < 60 else f"{uptime_seconds / 60:.1f} minutes"
+        send_webhook(webhook_url, 
+                     f"Server has stopped.\n**Uptime**: {uptime_str}", 
+                     "Server Stopped", 0xFF0000,
+                     execution_time=stop_time - start_time)
+        return server_process, start_time
+    except Exception as e:
+        error_msg = f"Failed to start server: {e}"
+        log_error(error_msg)
+        send_webhook(webhook_url, 
+                     error_msg, 
+                     "Server Error", 0xFF0000, 
+                     read_latest_error(),
+                     execution_time=time.time() - start_time)
+        raise
+
 def start_server_no_loop():
     clear_terminal()
     config = load_config()
@@ -280,23 +433,35 @@ def start_server_no_loop():
         if current_version:
             jar_file = os.path.join(server_path_abs, current_version)
             if os.path.exists(jar_file):
-                print(Fore.GREEN + f"=================== STARTING SERVER ==================")
-                print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
-                print(Fore.GREEN + f"======================================================")
-                server_process = run_server(jar_file)
-                server_process.wait()
-                print(Fore.RED + f"====================== SERVER STOPED =====================")
-                print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
-                print(Fore.RED + f"==========================================================")
-                print(Fore.YELLOW + "Back to menu...")
-                time.sleep(1)
-                menu()
+                try:
+                    server_process, start_time = start_server(jar_file, server_path_abs, config.get("webhook_url"))
+                    server_process.wait()
+                    print(Fore.RED + f"====================== SERVER STOPED =====================")
+                    print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+                    print(Fore.RED + f"==========================================================")
+                    print(Fore.YELLOW + "Back to menu...")
+                    time.sleep(1)
+                    menu()
+                except Exception as e:
+                    print(Fore.RED + f"Error occurred: {e}")
+                    print(Fore.YELLOW + "Back to menu...")
+                    time.sleep(1)
+                    menu()
             else:
-                print(Fore.YELLOW + f"File jar {current_version} does not exist at path {server_path_abs}")
+                error_msg = f"File jar {current_version} does not exist at path {server_path_abs}"
+                log_error(error_msg)
+                send_webhook(config.get("webhook_url"), error_msg, "Error", 0xFF0000, read_latest_error())
+                print(Fore.YELLOW + error_msg)
         else:
-            print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
+            error_msg = "No Paper file found. Please configure a Paper version."
+            log_error(error_msg)
+            send_webhook(config.get("webhook_url"), error_msg, "Warning", 0xFFFF00, read_latest_error())
+            print(Fore.YELLOW + error_msg)
     else:
-        print("Server path not set. Please configure config")
+        error_msg = "Server path not set. Please configure config."
+        log_error(error_msg)
+        send_webhook(config.get("webhook_url"), error_msg, "Error", 0xFF0000, read_latest_error())
+        print(error_msg)
 
 def start_server_loop():
     clear_terminal()
@@ -314,26 +479,38 @@ def start_server_loop():
             if current_version:
                 jar_file = os.path.join(server_path_abs, current_version)
                 if os.path.exists(jar_file):
-                    print(Fore.GREEN + f"=================== STARTING SERVER ==================")
-                    print(Fore.GREEN + f"Starting server with: " + Fore.YELLOW + f"{current_version}")
-                    print(Fore.GREEN + f"======================================================")
-                    server_process = run_server(jar_file)
-                    server_process.wait()
-                    print(Fore.RED + f"====================== SERVER STOPED =====================")
-                    print(Fore.RED + "Server has stopped. Click " + Fore.GREEN + "\"Ctrl + C\"" + Fore.RED + " in 5 seconds to go back" + Fore.YELLOW + " to main menu.")
-                    print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
-                    print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
-                    print(Fore.RED + f"==========================================================")
-                    print()
-                    time.sleep(5)
+                    try:
+                        server_process, start_time = start_server(jar_file, server_path_abs, config.get("webhook_url"))
+                        server_process.wait()
+                        print(Fore.RED + f"====================== SERVER STOPED =====================")
+                        print(Fore.RED + "Server has stopped. Click " + Fore.GREEN + "\"Ctrl + C\"" + Fore.RED + " in 5 seconds to go back" + Fore.YELLOW + " to main menu.")
+                        print(Fore.YELLOW + "NOTE: IF " + Fore.WHITE + "PAPER" + Fore.YELLOW + " HAS BEEN UPDATE FRIST TIME. SERVER AUTOMATIC STOPPED.")
+                        print(Fore.GREEN + "If you wanna restart? Please " + Fore.RED + "don't touch" + Fore.GREEN + " anything.")
+                        print(Fore.RED + f"==========================================================")
+                        print()
+                        time.sleep(5)
+                    except Exception as e:
+                        print(Fore.RED + f"Error occurred: {e}")
+                        print(Fore.YELLOW + "Back to menu...")
+                        time.sleep(1)
+                        break
                 else:
-                    print(Fore.YELLOW + f"File jar {current_version} does not exist at path {server_path_abs}")
+                    error_msg = f"File jar {current_version} does not exist at path {server_path_abs}"
+                    log_error(error_msg)
+                    send_webhook(config.get("webhook_url"), error_msg, "Error", 0xFF0000, read_latest_error())
+                    print(Fore.YELLOW + error_msg)
                     break
             else:
-                print(Fore.YELLOW + "No Paper file found. Please configure a Paper version.")
+                error_msg = "No Paper file found. Please configure a Paper version."
+                log_error(error_msg)
+                send_webhook(config.get("webhook_url"), error_msg, "Warning", 0xFFFF00, read_latest_error())
+                print(Fore.YELLOW + error_msg)
                 break
     else:
-        print("Server path not set. Please configure config")
+        error_msg = "Server path not set. Please configure config."
+        log_error(error_msg)
+        send_webhook(config.get("webhook_url"), error_msg, "Error", 0xFF0000, read_latest_error())
+        print(error_msg)
 
 def check_server_path():
     config = load_config()
@@ -370,17 +547,19 @@ def check_for_update_auto_mode():
 
             if version:
                 latest_build_number = build_number
-
                 if latest_build_number > current_build_number:
+                    send_webhook(config.get("webhook_url"), f"Updating to new build {latest_build_number} from {current_build_number}", "Update Available", 0x00FFFF)
                     print(Fore.GREEN + f"Newer build available: {latest_build_number} (current: {current_build_number})")
                     delete_old_version(current_version)
                     download_latest_version(download_url_template.format(version=version, build_number=build_number, file_name=file_name), file_name)
-                    get_changelog_for_build(version, latest_build_number)
+                    send_webhook(config.get("webhook_url"), f"Updated to {file_name}", "Update Completed", 0x00FF00)
                 else:
                     print(Fore.GREEN + "You are already using the latest version.")
             else:
+                send_webhook(config.get("webhook_url"), "Failed to fetch the latest version URL.", "Error", 0xFF0000)
                 print(Fore.RED + "Failed to fetch the latest version URL.")
     else:
+        send_webhook(config.get("webhook_url"), "No current version found, nothing to update.", "Warning", 0xFFFF00)
         print(Fore.YELLOW + "No current version found, nothing to update.")
 
 def download_latest_version(download_url, file_name):
@@ -632,12 +811,14 @@ def configure_server():
         print(f"1. RAM: {config['ram']}")
         print(f"2. GUI Mode: {Fore.GREEN + 'Enabled' if not config['nogui'] else Fore.RED + 'Disabled'}")
         print(f"3. Server Path: {config.get('server_path', 'Not set')}")
+        print(f"4. Webhook URL: {config.get('webhook_url', 'Not set')}")
 
         print(Fore.CYAN + "Options:")
         print("1. Set RAM Limit")
         print("2. Toggle GUI Mode")
         print("3. Set Server Path")
-        print("4. Save and Return to Menu")
+        print("4. Set Webhook URL")
+        print("5. Save and Return to Menu")
         S = "====="
         x = S.center(60)
         print(x)
@@ -658,6 +839,11 @@ def configure_server():
             config["server_path"] = server_path
             print(f"Server path set to {server_path}.")
         elif choice == '4':
+            clear_terminal()
+            webhook_url = input("Enter Discord Webhook URL (or leave blank to disable): ").strip()
+            config["webhook_url"] = webhook_url
+            print(f"Webhook URL set to {webhook_url or 'Not set'}.")
+        elif choice == '5':
             clear_terminal()
             save_config(config)
             print(Fore.YELLOW + "Configuration saved. Returning to menu...")
