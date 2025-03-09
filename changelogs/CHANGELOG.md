@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2025-03-08
+### Removed
+- def merge_changelogs
+
 ## [1.0.4] - 2025-03-08
 ### Added
 - Change Log in script.

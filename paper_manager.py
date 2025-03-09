@@ -33,27 +33,7 @@ default_config = {
     "server_path": ""
 }
 
-def merge_changelogs():
-    os.makedirs(CHANGELOG_DIR, exist_ok=True)
-    changelog_files = glob.glob(os.path.join(CHANGELOG_DIR, "changelog_v*.md"))
-    changelog_files.sort(reverse=True)
-
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as outfile:
-        outfile.write("# Changelog\n\n")
-        outfile.write("All notable changes to this project will be documented in this file.\n\n")
-        if not changelog_files:
-            outfile.write("No changelog entries yet.\n")
-            print("No changelog files found.")
-            return
-        for file in changelog_files:
-            with open(file, "r", encoding="utf-8") as infile:
-                outfile.write(infile.read())
-                outfile.write("\n\n")
-    
-    print(f"Updated {OUTPUT_FILE}")
-
 def get_latest_changelog_from_github():
-    """Tải CHANGELOG.md từ GitHub và lấy phần changelog mới nhất với màu sắc"""
     max_retries = 3
     for attempt in range(max_retries):
         try:
