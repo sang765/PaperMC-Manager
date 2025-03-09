@@ -1,0 +1,38 @@
+name: Update Changelog
+
+on:
+  push:
+    paths:
+      - 'changelogs/changelog_v*.md'
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update CHANGELOGS.md
+        run: |
+          CHANGELOG_DIR="changelogs"
+          OUTPUT_FILE="$CHANGELOG_DIR/CHANGELOGS.md"
+
+          echo "# Changelog" > "$OUTPUT_FILE"
+          echo "" >> "$OUTPUT_FILE"
+          echo "All notable changes to this project will be documented in this file." >> "$OUTPUT_FILE"
+          echo "" >> "$OUTPUT_FILE"
+
+          for file in $(ls -1v "$CHANGELOG_DIR"/changelog_v*.md | sort -r); do
+            cat "$file" >> "$OUTPUT_FILE"
+            echo "" >> "$OUTPUT_FILE"
+          done
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add "$CHANGELOG_DIR/CHANGELOGS.md"
+          git commit -m "chore: update CHANGELOGS.md" || echo "Không có thay đổi để commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
